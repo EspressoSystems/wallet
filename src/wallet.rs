@@ -2,7 +2,6 @@ use anyhow::Result;
 use commit::{self, Commitment, Committable, RawCommitmentBuilder};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
-use ethers::providers::{Http, Provider};
 use ethers::signers::coins_bip39::English;
 use ethers::signers::MnemonicBuilder;
 use lazy_static::lazy_static;
@@ -87,5 +86,31 @@ impl Committable for DummyCommittable {
 
     fn tag() -> String {
         unreachable!()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ethers::utils::Anvil;
+
+    static MNEMONIC: &str = "test test test test test test test test test test test junk";
+
+    #[test]
+    fn test_new_wallet() -> anyhow::Result<()> {
+        let anvil = Anvil::new().spawn();
+        EspressoWallet::new(MNEMONIC.into(), 1, anvil.endpoint())?;
+
+        Ok(())
+    }
+    #[async_std::test]
+    async fn test_balance() -> anyhow::Result<()> {
+        let anvil = Anvil::new().spawn();
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 1, anvil.endpoint()).unwrap();
+        let balance = wallet.balance().await?;
+        // initial balance as configured in Anvil
+        assert_eq!(U256::from(10000000000000000000000u128), balance);
+
+        Ok(())
     }
 }
