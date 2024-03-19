@@ -91,7 +91,7 @@ impl Committable for DummyCommittable {
 
 #[cfg(test)]
 mod test {
-    use std::{sync::Arc, time::Duration};
+    use std::{sync::Arc};
 
     use super::*;
     use ethers::utils::Anvil;
@@ -123,7 +123,7 @@ mod test {
         let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
 
         let provider = Arc::new(wallet.client);
-        let contract = crate::contracts::weth9::WETH9::deploy(provider, ())
+        let _contract = crate::contracts::weth9::WETH9::deploy(provider, ())
             .unwrap()
             .send()
             .await?;
