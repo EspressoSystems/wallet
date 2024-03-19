@@ -11,3 +11,4 @@ clap = { version = "4.4", features = ["derive", "env"] }
 commit = { git = "https://github.com/EspressoSystems/commit" }
 ethers = "2.0"
 lazy_static = "1.4"
+serde = { version = "1.0.195", features = ["derive"] }
