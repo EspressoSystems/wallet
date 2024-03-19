@@ -136,6 +136,13 @@
               types_or = [ "solidity" ];
               pass_filenames = false;
             };
+            solhint = {
+              enable = true;
+              description = "Solidity linter";
+              entry = "solhint --fix 'contracts/{script,src,test}/**/*.sol'";
+              types_or = [ "solidity" ];
+              pass_filenames = true;
+            };
             contract-bindings = {
               enable = true;
               description = "Generate contract bindings";
