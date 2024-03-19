@@ -136,13 +136,6 @@
               types_or = [ "solidity" ];
               pass_filenames = false;
             };
-            solhint = {
-              enable = true;
-              description = "Solidity linter";
-              entry = "solhint --fix 'contracts/{script,src,test}/**/*.sol'";
-              types_or = [ "solidity" ];
-              pass_filenames = true;
-            };
             contract-bindings = {
               enable = true;
               description = "Generate contract bindings";
@@ -229,7 +222,7 @@
             export PATH="$PWD/$CARGO_TARGET_DIR/release:$PATH"
           '' + self.checks.${system}.pre-commit-check.shellHook;
           RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
-          FOUNDRY_SOLC = "${solc}/bin/solc";
+          # FOUNDRY_SOLC = "${solc}/bin/solc";
           inherit RUST_LOG RUST_BACKTRACE RUSTFLAGS CARGO_TARGET_DIR;
         };
       devShells.crossShell =
