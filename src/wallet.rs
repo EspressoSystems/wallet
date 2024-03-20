@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::contracts::erc20::erc20::ERC20 as Erc20Contract;
 use anyhow::Result;
 use commit::{self, Commitment, Committable, RawCommitmentBuilder};
 use ethers::core::k256::ecdsa::SigningKey;
@@ -15,19 +16,6 @@ lazy_static! {
             .finalize()
             .into();
 }
-
-// https://github.com/gakonst/ethers-rs/blob/master/examples/transactions/examples/transfer_erc20.rs
-abigen!(
-    Erc20Contract,
-    r#"[
-        function balanceOf(address account) external view returns (uint256)
-        function decimals() external view returns (uint8)
-        function symbol() external view returns (string memory)
-        function transfer(address to, uint256 amount) external returns (bool)
-        function mint(address to, uint256 amount) external
-        event Transfer(address indexed from, address indexed to, uint256 value)
-    ]"#,
-);
 
 pub struct EspressoWallet {
     pub client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,

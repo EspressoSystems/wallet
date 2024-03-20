@@ -125,7 +125,7 @@
               enable = true;
               description = "Run clippy";
               entry =
-                "cargo clippy --workspace --all-features --all-targets -- -D warnings";
+                "cargo clippy --all-features --all-targets -- -D warnings";
               types_or = [ "rust" "toml" ];
               pass_filenames = false;
             };
