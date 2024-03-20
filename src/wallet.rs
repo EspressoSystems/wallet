@@ -268,7 +268,6 @@ mod test {
         // The extra bytes appended to calldata shouldn't affect the
         // transaction execution.
         let amount = U256::from(u128::MAX);
-        dbg!(amount);
 
         wallet
             .mint_erc20(contract_addr, wallet.client.address(), amount, None)
