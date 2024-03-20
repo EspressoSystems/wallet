@@ -31,16 +31,8 @@ jobs:
         with:
             version: nightly-2cb875799419c907cc3709e586ece2559e6b340e # Not using the default version because likely of this bug https://github.com/foundry-rs/foundry/issues/7120
 
-      - name: Install just command runner
-        run: |
-          sudo snap install --edge --classic just
-          just --version
-
       - name: Checkout Repository
         uses: actions/checkout@v3
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
 
       - name: Build Release
         run: cargo build --release --target ${{ matrix.target }}
