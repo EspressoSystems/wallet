@@ -39,5 +39,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Test
-        run: cargo test -- --nocapture
+        run: |
+          ls
+          ls -ls /home/runner/work/wallet/wallet/target/debug/
+          cargo test -- --nocapture
         timeout-minutes: 10
