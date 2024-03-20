@@ -160,9 +160,26 @@ mod test {
 
     static MNEMONIC: &str = "test test test test test test test test test test test junk";
     #[test]
+    fn test_bin_balance() -> anyhow::Result<()> {
+        let anvil = Anvil::new().chain_id(1u64).spawn();
+        dbg!(env!("CARGO_PKG_NAME"));
+        dbg!(env!("CARGO_BIN_NAME"));
+        dbg!(env!("CARGO_TARGET_DIR"));
+        let path = assert_cmd::cargo::cargo_bin(env!("CARGO_PKG_NAME"));
+        dbg!(path);
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.env("MNEMONIC", MNEMONIC)
+            .env("ROLLUP_RPC_URL", anvil.endpoint())
+            .arg("balance")
+            .assert()
+            .success();
+
+        Ok(())
+    }
+
+    #[test]
     fn test_bin_transfer() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
-
         let addr = "0xdcfd71e8bc0fef04efab73bd0d79e3b1106b4067";
 
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
