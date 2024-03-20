@@ -164,7 +164,6 @@ mod test {
         let anvil = Anvil::new().chain_id(1u64).spawn();
         dbg!(env!("CARGO_PKG_NAME"));
         dbg!(env!("CARGO_BIN_NAME"));
-        dbg!(env!("CARGO_TARGET_DIR"));
         let path = assert_cmd::cargo::cargo_bin(env!("CARGO_PKG_NAME"));
         dbg!(path);
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
