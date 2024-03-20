@@ -1,3 +1,4 @@
+mod contracts;
 mod wallet;
 
 use clap::{Parser, Subcommand};

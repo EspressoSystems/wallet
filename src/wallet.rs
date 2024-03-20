@@ -91,6 +91,8 @@ impl Committable for DummyCommittable {
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
     use super::*;
     use ethers::utils::Anvil;
 
@@ -110,6 +112,21 @@ mod test {
         let balance = wallet.balance().await?;
         // initial balance as configured in Anvil
         assert_eq!(U256::from(10000000000000000000000u128), balance);
+
+        Ok(())
+    }
+    #[async_std::test]
+    async fn test_deploy() -> anyhow::Result<()> {
+        // use wallet default chain_id
+        // should this be an option passed to wallet?
+        let anvil = Anvil::new().chain_id(1u64).spawn();
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
+
+        let provider = Arc::new(wallet.client);
+        let _contract = crate::contracts::weth9::weth9::WETH9::deploy(provider, ())
+            .unwrap()
+            .send()
+            .await?;
 
         Ok(())
     }

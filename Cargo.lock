@@ -3887,6 +3887,7 @@ dependencies = [
  "commit",
  "ethers",
  "lazy_static",
+ "serde",
 ]
 
 [[package]]

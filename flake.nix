@@ -229,7 +229,7 @@
             export PATH="$PWD/$CARGO_TARGET_DIR/release:$PATH"
           '' + self.checks.${system}.pre-commit-check.shellHook;
           RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
-          FOUNDRY_SOLC = "${solc}/bin/solc";
+          # FOUNDRY_SOLC = "${solc}/bin/solc";
           inherit RUST_LOG RUST_BACKTRACE RUSTFLAGS CARGO_TARGET_DIR;
         };
       devShells.crossShell =
