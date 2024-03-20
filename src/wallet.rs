@@ -250,6 +250,33 @@ mod test {
         assert!(new_balance < balance);
         Ok(())
     }
+    #[async_std::test]
+    async fn test_erc20_mint_max_value() -> anyhow::Result<()> {
+        let anvil = Anvil::new().chain_id(1u64).spawn();
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
+
+        let erc20_contract = SimpleToken::deploy(
+            wallet.client.clone(),
+            ("name".to_string(), "symbol".to_string(), U256::from(18)),
+        )
+        .unwrap()
+        .send()
+        .await?;
+
+        let contract_addr = erc20_contract.address();
+
+        // The extra bytes appended to calldata shouldn't affect the
+        // transaction execution.
+        let amount = U256::from(u128::MAX);
+        dbg!(amount);
+
+        wallet
+            .mint_erc20(contract_addr, wallet.client.address(), amount, None)
+            .await
+            .unwrap_err();
+
+        Ok(())
+    }
 
     #[async_std::test]
     async fn test_erc20() -> anyhow::Result<()> {
