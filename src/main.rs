@@ -1,6 +1,8 @@
+mod builder;
 mod contracts;
 mod wallet;
 
+use builder::get_builder_address;
 use clap::{Parser, Subcommand};
 use ethers::types::{Address, U256};
 use std::str::FromStr;
@@ -37,7 +39,39 @@ enum Commands {
         #[clap(long, default_value_t = false)]
         guaranteed_by_builder: bool,
     },
+    TransferErc20 {
+        #[clap(long)]
+        contract_address: String,
+
+        #[clap(long)]
+        amount: u64,
+
+        /// hex string of the target address
+        #[clap(long)]
+        to: String,
+
+        #[clap(long, default_value_t = false)]
+        guaranteed_by_builder: bool,
+    },
     Balance,
+    BalanceErc20 {
+        #[clap(long)]
+        contract_address: String,
+    },
+    MintErc20 {
+        #[clap(long)]
+        contract_address: String,
+
+        #[clap(long)]
+        amount: u64,
+
+        /// hex string of the target address
+        #[clap(long)]
+        to: String,
+
+        #[clap(long, default_value_t = false)]
+        guaranteed_by_builder: bool,
+    },
 }
 
 #[async_std::main]
@@ -57,8 +91,7 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr = if *guaranteed_by_builder {
-                // get the builder address
-                Some(Address::random())
+                Some(get_builder_address())
             } else {
                 None
             };
@@ -73,6 +106,49 @@ async fn main() {
         Commands::Balance => {
             let result = wallet.balance().await.unwrap();
             println!("{}", result);
+        }
+        Commands::TransferErc20 {
+            contract_address,
+            amount,
+            to,
+            guaranteed_by_builder,
+        } => {
+            let builder_addr = if *guaranteed_by_builder {
+                Some(get_builder_address())
+            } else {
+                None
+            };
+            let to_addr = Address::from_str(to).unwrap();
+            let contract_addr = Address::from_str(contract_address).unwrap();
+            let receipt = wallet
+                .transfer_erc20(contract_addr, to_addr, U256::from(*amount), builder_addr)
+                .await
+                .unwrap();
+            println!("{:?}", receipt);
+        }
+        Commands::BalanceErc20 { contract_address } => {
+            let contract_addr = Address::from_str(contract_address).unwrap();
+            let balance = wallet.balance_erc20(contract_addr).await.unwrap();
+            println!("{:?}", balance);
+        }
+        Commands::MintErc20 {
+            contract_address,
+            amount,
+            to,
+            guaranteed_by_builder,
+        } => {
+            let builder_addr = if *guaranteed_by_builder {
+                Some(get_builder_address())
+            } else {
+                None
+            };
+            let to_addr = Address::from_str(to).unwrap();
+            let contract_addr = Address::from_str(contract_address).unwrap();
+            let receipt = wallet
+                .mint_erc20(contract_addr, to_addr, U256::from(*amount), builder_addr)
+                .await
+                .unwrap();
+            println!("{:?}", receipt);
         }
     }
 }
