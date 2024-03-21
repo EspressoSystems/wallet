@@ -1,18 +1,19 @@
 default:
-	just --list
+    just --list
 
 test:
-	cargo test
+    cargo build # build the wallet executable
+    cargo test
 
 check:
-	pre-commit
+    pre-commit
 
 # generate rust bindings for contracts
 gen-bindings:
-	forge bind --contracts ./sol/ --module --bindings-path src/contracts --overwrite --force
-	cargo fmt --all
-	cargo sort -g -w
+    forge bind --contracts ./sol/ --module --bindings-path src/contracts --overwrite --force
+    cargo fmt --all
+    cargo sort -g -w
 
 # Lint solidity files
 sol-lint:
-	solhint --fix 'sol/**/*.sol'
+    solhint --fix 'sol/**/*.sol'
