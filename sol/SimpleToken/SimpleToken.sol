@@ -65,6 +65,8 @@ contract ERC20 is IERC20 {
     }
 
     function _mint(address to, uint256 amount) internal {
+	require(amount <= 100 * 10 ** uint256(24), "Too much mint");
+
         balanceOf[to] += amount;
         totalSupply += amount;
         emit Transfer(address(0), to, amount);
