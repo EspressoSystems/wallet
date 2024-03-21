@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::contracts::erc20::erc20::ERC20 as Erc20Contract;
+use crate::contracts::erc20::ERC20 as Erc20Contract;
 use anyhow::Result;
 use commit::{self, Commitment, Committable, RawCommitmentBuilder};
 use ethers::core::k256::ecdsa::SigningKey;
@@ -185,7 +185,7 @@ impl Committable for DummyCommittable {
 
 #[cfg(test)]
 mod test {
-    use crate::contracts::simple_token::simple_token::SimpleToken;
+    use crate::contracts::simple_token::SimpleToken;
 
     use super::*;
     use ethers::utils::Anvil;
@@ -248,6 +248,32 @@ mod test {
             .await?;
         let new_balance = wallet.balance().await?;
         assert!(new_balance < balance);
+        Ok(())
+    }
+    #[async_std::test]
+    async fn test_erc20_mint_max_value() -> anyhow::Result<()> {
+        let anvil = Anvil::new().chain_id(1u64).spawn();
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
+
+        let erc20_contract = SimpleToken::deploy(
+            wallet.client.clone(),
+            ("name".to_string(), "symbol".to_string(), U256::from(18)),
+        )
+        .unwrap()
+        .send()
+        .await?;
+
+        let contract_addr = erc20_contract.address();
+
+        // The extra bytes appended to calldata shouldn't affect the
+        // transaction execution.
+        let amount = U256::from(u128::MAX);
+
+        wallet
+            .mint_erc20(contract_addr, wallet.client.address(), amount, None)
+            .await
+            .unwrap_err();
+
         Ok(())
     }
 

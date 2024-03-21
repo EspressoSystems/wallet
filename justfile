@@ -15,5 +15,4 @@ gen-bindings:
 
 # Lint solidity files
 sol-lint:
-	forge fmt
-	solhint --fix 'contracts/{script,src,test}/**/*.sol'
+	solhint --fix 'sol/**/*.sol'
