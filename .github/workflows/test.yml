@@ -27,8 +27,6 @@ jobs:
     steps:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-            version: nightly-2cb875799419c907cc3709e586ece2559e6b340e # Not using the default version because likely of this bug https://github.com/foundry-rs/foundry/issues/7120
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -40,7 +38,6 @@ jobs:
 
       - name: Test
         run: |
-          ls
-          ls -ls /home/runner/work/wallet/wallet/target/debug/
-          cargo test -- --nocapture
+          cargo build # build the wallet executable
+          cargo test
         timeout-minutes: 10
