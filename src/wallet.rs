@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::contracts::erc20::ERC20 as Erc20Contract;
 use anyhow::Result;
 use commit::{self, Commitment, Committable, RawCommitmentBuilder};
 use ethers::core::k256::ecdsa::SigningKey;
@@ -9,6 +8,8 @@ use ethers::prelude::*;
 use ethers::signers::coins_bip39::English;
 use ethers::signers::MnemonicBuilder;
 use lazy_static::lazy_static;
+
+use contracts::erc20::ERC20 as Erc20Contract;
 
 lazy_static! {
     static ref MAGIC_BYTES: [u8; 32] =
@@ -185,7 +186,7 @@ impl Committable for DummyCommittable {
 
 #[cfg(test)]
 mod test {
-    use crate::contracts::simple_token::SimpleToken;
+    use contracts::simple_token::SimpleToken;
 
     use super::*;
     use ethers::utils::Anvil;
