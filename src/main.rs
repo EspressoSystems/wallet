@@ -3,7 +3,10 @@ mod wallet;
 
 use builder::get_builder_address;
 use clap::{Parser, Subcommand};
-use ethers::types::{Address, U256};
+use ethers::{
+    providers::{Http, Middleware, Provider},
+    types::{Address, U256},
+};
 use std::str::FromStr;
 use wallet::EspressoWallet;
 
@@ -76,7 +79,14 @@ enum Commands {
 #[async_std::main]
 async fn main() {
     let cli = Cli::parse();
-    let wallet = EspressoWallet::new(cli.mnemonic, cli.account_index, cli.rollup_rpc_url);
+    let provider = Provider::<Http>::try_from(&cli.rollup_rpc_url).unwrap();
+    let id = provider.get_chainid().await.unwrap();
+    let wallet = EspressoWallet::new(
+        cli.mnemonic,
+        cli.account_index,
+        cli.rollup_rpc_url,
+        id.as_u64(),
+    );
     if let Err(e) = wallet {
         eprintln!("failed to create a wallet: {}", e);
         return;

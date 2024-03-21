@@ -57,7 +57,8 @@ async fn test() -> Result<()> {
     let wallet = MnemonicBuilder::<English>::default()
         .phrase(mnemonic)
         .index(index)?
-        .build()?;
+        .build()?
+        .with_chain_id(412346_u64);
     let client = SignerMiddleware::new(provider, wallet);
     let _ = wait_for_condition(
         || async {
