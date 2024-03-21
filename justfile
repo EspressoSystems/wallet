@@ -16,4 +16,4 @@ gen-bindings:
 
 # Lint solidity files
 sol-lint:
-	solhint --fix 'sol/**/*.sol'
+    solhint --fix 'sol/**/*.sol'
