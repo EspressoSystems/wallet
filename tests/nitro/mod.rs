@@ -1,4 +1,4 @@
-use std::{process::Command, sync::Arc, time::Duration};
+use std::{io::Write, process::Command, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use ethers::{prelude::*, signers::coins_bip39::English};
@@ -20,12 +20,16 @@ async fn test() -> Result<()> {
         .arg("compose")
         .arg("down")
         .spawn()?;
-    Command::new("./test-node.bash")
+    let mut testnode = Command::new("./test-node.bash")
         .current_dir(nitro_work_dir)
         .arg("--init")
         .arg("--espresso")
         .arg("--latest-espresso-image")
         .spawn()?;
+
+    if let Some(stdin) = testnode.stdin.as_mut() {
+        stdin.write_all(b"y\n")?;
+    }
 
     let commitment_task_is_good = wait_for_condition(
         || async {
@@ -57,16 +61,14 @@ async fn test() -> Result<()> {
     let client = SignerMiddleware::new(provider, wallet);
     let _ = wait_for_condition(
         || async {
-            let output = Command::new("http://127.0.0.1:50000/status/block-height")
-                .output()
-                .unwrap();
-            let s = String::from_utf8_lossy(&output.stdout)
-                .parse::<u64>()
-                .unwrap();
-            s > 10
+            if let Ok(num) = client.get_block_number().await {
+                num > 10.into()
+            } else {
+                false
+            }
         },
         Duration::from_secs(5),
-        Duration::from_secs(600),
+        Duration::from_secs(300),
     )
     .await;
 
