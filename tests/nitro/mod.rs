@@ -133,7 +133,7 @@ async fn test() -> Result<()> {
     assert!(transfer_with_invalid_builder.stdout.is_empty());
     assert!(!transfer_with_invalid_builder.stderr.is_empty());
 
-    let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
+    let valid_builder_address = "23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
     let transfer_with_valid_builder = Command::new("wallet")
         .arg("transfer")
         .arg("--to")
@@ -149,6 +149,8 @@ async fn test() -> Result<()> {
 
     assert!(!transfer_with_valid_builder.stdout.is_empty());
     assert!(transfer_with_valid_builder.stderr.is_empty());
+
+    // Failed to deploy this contract. Didn't know why
 
     // use contracts::simple_token::SimpleToken;
     // use std::sync::Arc;

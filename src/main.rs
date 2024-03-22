@@ -22,7 +22,7 @@ pub struct Cli {
     #[clap(long, env = "BUILDER_URL", default_value = "")]
     builder_url: String,
 
-    /// The builder address which starts with `0x`. Lower priority than `builder_url`.
+    /// The builder address without the prefix`0x`. Lower priority than `builder_url`.
     #[clap(long, env = "BUILDER_ADDRESS", default_value = "")]
     builder_addr: String,
 
@@ -93,8 +93,7 @@ async fn main() {
         id.as_u64(),
     );
     if let Err(e) = wallet {
-        eprintln!("failed to create a wallet: {}", e);
-        return;
+        panic!("failed to create a wallet: {}", e);
     }
     let wallet = wallet.unwrap();
 
@@ -108,7 +107,10 @@ async fn main() {
                 if cli.builder_url.is_empty() {
                     Some(get_builder_address())
                 } else if !cli.builder_addr.is_empty() {
-                    Some(Address::from_str(&cli.builder_addr.as_str()[2..]).unwrap())
+                    Some(
+                        Address::from_str(&cli.builder_addr)
+                            .expect("Invalid builder address. Maybe remove the prefix `0x`?"),
+                    )
                 } else {
                     None
                 }
@@ -116,7 +118,8 @@ async fn main() {
                 None
             };
 
-            let to_addr = Address::from_str(to).unwrap();
+            let to_addr =
+                Address::from_str(to).expect("Invalid to address. Maybe remove the prefix `0x`?");
             let receipt = wallet
                 .transfer(to_addr, U256::from(*amount), builder_addr)
                 .await
