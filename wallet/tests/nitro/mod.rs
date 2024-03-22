@@ -20,6 +20,22 @@ impl Drop for Cleanup {
             .arg("down")
             .output()
             .unwrap();
+
+        let output = Command::new("docker")
+            .arg("ps")
+            .arg("-a")
+            .arg("-q")
+            .output()
+            .unwrap();
+
+        let stdout = std::str::from_utf8(&output.stdout).unwrap();
+        let containers = stdout.trim();
+
+        Command::new("docker")
+            .arg("rm")
+            .arg(containers)
+            .output()
+            .unwrap();
     }
 }
 
