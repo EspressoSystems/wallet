@@ -138,7 +138,7 @@ async fn main() {
         Commands::BalanceErc20 { contract_address } => {
             let contract_addr = Address::from_str(contract_address).unwrap();
             let balance = wallet.balance_erc20(contract_addr).await.unwrap();
-            println!("{:?}", balance);
+            println!("{:?}", balance.to_string());
         }
         Commands::MintErc20 {
             contract_address,

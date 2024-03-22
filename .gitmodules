@@ -1,3 +1,5 @@
-[submodule "tests/nitro/testnode"]
-	path = tests/nitro/testnode
+[submodule "tests/nitro/nitro-testnode"]
+	# It is a must to keep the dir name as `nitro-testnode`, as some hardcoding
+	# in its testnode script
+	path = tests/nitro/nitro-testnode
 	url = https://github.com/EspressoSystems/nitro-testnode.git
