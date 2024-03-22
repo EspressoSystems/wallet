@@ -38,6 +38,6 @@ jobs:
       - name: Enable Rust Caching
         uses: Swatinem/rust-cache@v2
 
-      - name: Test
+      - name: Test Nitro
         run: just nitro-test
         timeout-minutes: 10
