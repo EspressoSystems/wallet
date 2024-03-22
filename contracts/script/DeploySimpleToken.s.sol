@@ -10,7 +10,7 @@ contract DeploySimpleTokenScript is Script {
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
         vm.startBroadcast(privateKey);
 
-        new SimpleToken( /*name */ "Bean", /* symbol */ "BEAN", /* decimcals */ 18);
+        new SimpleToken( /*name */ "Bean", /* symbol */ "BEAN", /* decimals */ 18);
 
         vm.stopBroadcast();
     }

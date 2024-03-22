@@ -25,3 +25,4 @@ node_modules/
 # smart contracts
 contracts/cache
 contracts/out
+contracts/broadcast/*/31337
