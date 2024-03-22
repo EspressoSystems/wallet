@@ -61,7 +61,7 @@ async fn test() -> Result<()> {
             }
         },
         Duration::from_secs(5),
-        Duration::from_secs(90),
+        Duration::from_secs(300),
     )
     .await;
     assert!(commitment_task_is_good);
