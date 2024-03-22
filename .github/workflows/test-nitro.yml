@@ -1,4 +1,4 @@
-name: Test
+name: Test Nitro
 
 on:
   push:
@@ -39,5 +39,5 @@ jobs:
       - name: Test
         run: |
           cargo build # build the wallet executable
-          cargo test -- --skip nitro::test
+          cargo test -p wallet nitro::test
         timeout-minutes: 10
