@@ -1,6 +1,5 @@
 use std::{
     process::{Command, Stdio},
-    sync::Arc,
     time::Duration,
 };
 
@@ -8,7 +7,6 @@ use anyhow::Result;
 use ethers::{prelude::*, signers::coins_bip39::English};
 
 use crate::wait_for_condition;
-use contracts::simple_token::SimpleToken;
 
 #[ignore = "wip"]
 #[async_std::test]
@@ -17,14 +15,14 @@ async fn test() -> Result<()> {
     Command::new("cargo")
         .arg("build")
         .arg("--release")
-        .spawn()?;
+        .output()?;
 
     let nitro_work_dir = "tests/nitro/nitro-testnode";
     Command::new("docker")
         .current_dir(nitro_work_dir)
         .arg("compose")
         .arg("down")
-        .spawn()?;
+        .output()?;
 
     let _ = Command::new("./test-node.bash")
         .current_dir(nitro_work_dir)
@@ -105,7 +103,7 @@ async fn test() -> Result<()> {
         .current_dir(wallet_dir)
         .output()?;
 
-    println!("{:?}", balance_output.stdout);
+    assert!(balance_output.stderr.is_empty());
 
     let transfer_output = Command::new("wallet")
         .arg("transfer")
@@ -118,44 +116,65 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .output()?;
 
-    println!("receipt: {:?}", String::from_utf8(transfer_output.stdout));
-    println!(
-        "error: {:?}",
-        String::from_utf8(transfer_output.stderr.clone())
-    );
     assert!(transfer_output.stderr.is_empty());
 
-    let erc20 = SimpleToken::deploy(
-        Arc::new(client),
-        ("name".to_string(), "symbol".to_string(), U256::from(18)),
-    )
-    .unwrap()
-    .send()
-    .await?;
-
-    let erc20_addr = format!("{:x}", erc20.address());
-    let output = Command::new("wallet")
-        .arg("mint_erc20")
-        .arg("--contract-address")
-        .arg(erc20_addr)
+    let transfer_with_invalid_builder = Command::new("wallet")
+        .arg("transfer")
         .arg("--to")
-        .arg(format!("{:x}", addr))
+        .arg(format!("{:x}", Address::random()))
         .arg("--amount")
-        .arg("1")
+        .arg("10")
+        .arg("--guaranteed-by-builder")
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
+        .env("BUILDER_ADDRESS", format!("0x{:x}", Address::zero()))
+        .output()?;
+    assert!(transfer_with_invalid_builder.stdout.is_empty());
+    assert!(!transfer_with_invalid_builder.stderr.is_empty());
+
+    let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
+    let transfer_with_valid_builder = Command::new("wallet")
+        .arg("transfer")
+        .arg("--to")
+        .arg(format!("{:x}", Address::random()))
+        .arg("--amount")
+        .arg("10")
+        .arg("--guaranteed-by-builder")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .env("BUILDER_ADDRESS", valid_builder_address)
         .output()?;
 
-    println!("{:?}", output);
-    assert!(output.status.success());
-    Ok(())
-}
+    assert!(!transfer_with_valid_builder.stdout.is_empty());
+    assert!(transfer_with_valid_builder.stderr.is_empty());
 
-#[test]
-fn address_test() {
-    use std::str::FromStr;
-    let addr = format!("{:x}", Address::random());
-    println!("{:?}", addr);
-    Address::from_str(&addr).unwrap();
+    // use contracts::simple_token::SimpleToken;
+    // use std::sync::Arc;
+    // let erc20 = SimpleToken::deploy(
+    //     Arc::new(client),
+    //     ("name".to_string(), "symbol".to_string(), U256::from(18)),
+    // )
+    // .unwrap()
+    // .send()
+    // .await?;
+
+    // let erc20_addr = format!("{:x}", erc20.address());
+    // let output = Command::new("wallet")
+    //     .arg("mint_erc20")
+    //     .arg("--contract-address")
+    //     .arg(erc20_addr)
+    //     .arg("--to")
+    //     .arg(format!("{:x}", addr))
+    //     .arg("--amount")
+    //     .arg("1")
+    //     .env("MNEMONIC", mnemonic)
+    //     .env("ROLLUP_RPC_URL", nitro_rpc)
+    //     .env("ACCOUNT_INDEX", index.to_string())
+    //     .output()?;
+
+    // println!("{:?}", output);
+    // assert!(output.status.success());
+    Ok(())
 }

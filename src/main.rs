@@ -18,8 +18,13 @@ pub struct Cli {
     #[clap(long, env = "ROLLUP_RPC_URL")]
     rollup_rpc_url: String,
 
+    /// The url for fetching the builder address.
     #[clap(long, env = "BUILDER_URL", default_value = "")]
     builder_url: String,
+
+    /// The builder address which starts with `0x`. Lower priority than `builder_url`.
+    #[clap(long, env = "BUILDER_ADDRESS", default_value = "")]
+    builder_addr: String,
 
     #[clap(long, env = "ACCOUNT_INDEX", default_value = "0")]
     account_index: u32,
@@ -100,7 +105,13 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr = if *guaranteed_by_builder {
-                Some(get_builder_address())
+                if cli.builder_url.is_empty() {
+                    Some(get_builder_address())
+                } else if !cli.builder_addr.is_empty() {
+                    Some(Address::from_str(&cli.builder_addr.as_str()[2..]).unwrap())
+                } else {
+                    None
+                }
             } else {
                 None
             };
