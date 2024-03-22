@@ -194,7 +194,6 @@ mod test {
     use contract_bindings::simple_token::SimpleToken;
     use ethers::utils::Anvil;
 
-    static MNEMONIC: &str = "test test test test test test test test test test test junk";
     // initial balance as configured in Anvil
     const INITIAL_BALANCE: u128 = 10000000000000000000000u128;
 
