@@ -1,4 +1,7 @@
 # Espresso Wallet
+To fetch the source code
+
+    git clone --recursive https://github.com/EspressoSystems/wallet
 
 ## Dependencies
 Dependencies can be install with [nix](https://nixos.org/download/) by running
