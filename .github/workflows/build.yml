@@ -25,15 +25,23 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             binary-name: wallet
+            upload-name: wallet-x86-linux
+
           - os: macos-latest
             target: x86_64-apple-darwin
             binary-name: wallet
+            upload-name: wallet-x86-darwin
+
           - os: macos-latest
             target: aarch64-apple-darwin
             binary-name: wallet
+            upload-name: wallet-aarch64-darwin
+
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             binary-name: wallet.exe
+            upload-name: wallet-x86-win.exe
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -42,10 +50,12 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build Release
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+          cp -v target/${{ matrix.target }}/release/${{ matrix.binary-name }} ${{ matrix.upload-name }}
 
       - name: Release Artifact
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: target/${{ matrix.target }}/release/${{ matrix.binary-name }}
+          files: ${{ matrix.upload-name }}
