@@ -8,16 +8,15 @@ use ethers::{prelude::*, signers::coins_bip39::English};
 
 use crate::wait_for_condition;
 
-#[ignore = "wip"]
 #[async_std::test]
-async fn test() -> Result<()> {
+async fn integration_my_test() -> Result<()> {
     // build the release first
     Command::new("cargo")
         .arg("build")
         .arg("--release")
         .output()?;
 
-    let nitro_work_dir = "tests/nitro/nitro-testnode";
+    let nitro_work_dir = "../tests/nitro/nitro-testnode";
     Command::new("docker")
         .current_dir(nitro_work_dir)
         .arg("compose")
@@ -102,7 +101,7 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .current_dir(wallet_dir)
         .output()?;
-
+    dbg!(balance_output.stdout);
     assert!(balance_output.stderr.is_empty());
 
     let transfer_output = Command::new("wallet")
@@ -146,7 +145,6 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", valid_builder_address)
         .output()?;
-
     assert!(!transfer_with_valid_builder.stdout.is_empty());
     assert!(transfer_with_valid_builder.stderr.is_empty());
 
