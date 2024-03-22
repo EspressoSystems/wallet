@@ -8,23 +8,39 @@ use ethers::{prelude::*, signers::coins_bip39::English};
 
 use crate::wait_for_condition;
 
+const NITRO_WORK_DIR: &str = "../tests/nitro/nitro-testnode";
+
+struct Cleanup;
+impl Drop for Cleanup {
+    fn drop(&mut self) {
+        println!("drop it!");
+        Command::new("docker")
+            .current_dir(NITRO_WORK_DIR)
+            .arg("compose")
+            .arg("down")
+            .output()
+            .unwrap();
+    }
+}
+
 #[async_std::test]
 async fn test() -> Result<()> {
+    let _teardown = Cleanup;
+
     // build the release first
     Command::new("cargo")
         .arg("build")
         .arg("--release")
         .output()?;
 
-    let nitro_work_dir = "../tests/nitro/nitro-testnode";
     Command::new("docker")
-        .current_dir(nitro_work_dir)
+        .current_dir(NITRO_WORK_DIR)
         .arg("compose")
         .arg("down")
         .output()?;
 
     let _ = Command::new("./test-node.bash")
-        .current_dir(nitro_work_dir)
+        .current_dir(NITRO_WORK_DIR)
         .arg("--init")
         .arg("--espresso")
         .arg("--latest-espresso-image")
