@@ -1,3 +1,6 @@
+[submodule "contracts/lib/forge-std"]
+	path = contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
 [submodule "tests/nitro/nitro-testnode"]
 	# It is a must to keep the dir name as `nitro-testnode`, as some hardcoding
 	# in its testnode script

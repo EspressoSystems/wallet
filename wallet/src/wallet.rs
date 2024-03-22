@@ -1,15 +1,13 @@
-use std::sync::Arc;
-use std::time::Duration;
-
 use anyhow::Result;
 use commit::{self, Commitment, Committable, RawCommitmentBuilder};
+use contract_bindings::simple_token::SimpleToken as Erc20Contract;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::signers::coins_bip39::English;
 use ethers::signers::MnemonicBuilder;
 use lazy_static::lazy_static;
-
-use contracts::erc20::ERC20 as Erc20Contract;
+use std::sync::Arc;
+use std::time::Duration;
 
 lazy_static! {
     static ref MAGIC_BYTES: [u8; 32] =
@@ -192,9 +190,8 @@ impl Committable for DummyCommittable {
 
 #[cfg(test)]
 mod test {
-    use contracts::simple_token::SimpleToken;
-
     use super::*;
+    use contract_bindings::simple_token::SimpleToken;
     use ethers::utils::Anvil;
 
     static MNEMONIC: &str = "test test test test test test test test test test test junk";
@@ -303,6 +300,7 @@ mod test {
         // transaction execution.
         let builder_addr = Address::random();
         let amount = U256::from(1000);
+        let initial_balance = wallet.balance_erc20(contract_addr).await?;
 
         wallet
             .mint_erc20(contract_addr, wallet.client.address(), amount, None)
@@ -318,7 +316,6 @@ mod test {
 
         let decimals = erc20_contract.decimals().call().await?;
         let decimal_amount = amount * U256::exp10(decimals as usize);
-        let initial_balance = U256::from(100) * U256::exp10(decimals as usize);
         let balance = wallet.balance_erc20(contract_addr).await?;
         assert_eq!(
             balance,
@@ -360,6 +357,7 @@ mod test {
         let contract_addr = contract.address();
 
         let amount = U256::from(1000);
+        let initial_balance = wallet.balance_erc20(contract_addr).await?;
 
         wallet
             .mint_erc20(contract_addr, wallet.client.address(), amount, None)
@@ -375,7 +373,6 @@ mod test {
 
         let decimals = contract.decimals().call().await?;
         let decimal_amount = amount * U256::exp10(decimals as usize);
-        let initial_balance = U256::from(100) * U256::exp10(decimals as usize);
         let balance = wallet.balance_erc20(contract_addr).await?;
         assert_eq!(
             balance,

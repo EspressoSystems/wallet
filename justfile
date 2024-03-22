@@ -10,10 +10,10 @@ check:
 
 # generate rust bindings for contracts
 gen-bindings:
-	forge bind --contracts ./sol/ --crate-name contracts --bindings-path contracts --overwrite --force
-	cargo fmt --all
-	cargo sort -g -w
+    forge bind --select '^SimpleToken$' --contracts ./contracts/src --crate-name contract-bindings --bindings-path contract-bindings --overwrite --force
+    cargo fmt --all
+    cargo sort -g -w
 
 # Lint solidity files
 sol-lint:
-    solhint --fix 'sol/**/*.sol'
+    solhint --fix 'contracts/**/*.sol'
