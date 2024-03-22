@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::contracts::erc20::ERC20 as Erc20Contract;
 use anyhow::Result;
 use commit::{self, Commitment, Committable, RawCommitmentBuilder};
 use ethers::core::k256::ecdsa::SigningKey;
@@ -9,6 +8,8 @@ use ethers::prelude::*;
 use ethers::signers::coins_bip39::English;
 use ethers::signers::MnemonicBuilder;
 use lazy_static::lazy_static;
+
+use contracts::erc20::ERC20 as Erc20Contract;
 
 lazy_static! {
     static ref MAGIC_BYTES: [u8; 32] =
@@ -22,11 +23,17 @@ pub struct EspressoWallet {
 }
 
 impl EspressoWallet {
-    pub fn new(mnemonic: String, account_index: u32, rollup_url: String) -> Result<Self> {
+    pub fn new(
+        mnemonic: String,
+        account_index: u32,
+        rollup_url: String,
+        chain_id: u64,
+    ) -> Result<Self> {
         let wallet = MnemonicBuilder::<English>::default()
             .phrase(mnemonic.as_str())
             .index(account_index)?
-            .build()?;
+            .build()?
+            .with_chain_id(chain_id);
 
         let interval = if cfg!(test) {
             Duration::from_millis(10)
@@ -185,7 +192,7 @@ impl Committable for DummyCommittable {
 
 #[cfg(test)]
 mod test {
-    use crate::contracts::simple_token::SimpleToken;
+    use contracts::simple_token::SimpleToken;
 
     use super::*;
     use ethers::utils::Anvil;
@@ -197,14 +204,14 @@ mod test {
     #[test]
     fn test_new_wallet() -> anyhow::Result<()> {
         let anvil = Anvil::new().spawn();
-        EspressoWallet::new(MNEMONIC.into(), 1, anvil.endpoint())?;
+        EspressoWallet::new(MNEMONIC.into(), 1, anvil.endpoint(), 1)?;
 
         Ok(())
     }
     #[async_std::test]
     async fn test_balance() -> anyhow::Result<()> {
         let anvil = Anvil::new().spawn();
-        let wallet = EspressoWallet::new(MNEMONIC.into(), 1, anvil.endpoint()).unwrap();
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 1, anvil.endpoint(), 1).unwrap();
         let balance = wallet.balance().await?;
         assert_eq!(U256::from(INITIAL_BALANCE), balance);
 
@@ -215,7 +222,7 @@ mod test {
         // use wallet default chain_id
         // should this be an option passed to wallet?
         let anvil = Anvil::new().chain_id(1u64).spawn();
-        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint(), 1)?;
 
         let provider = wallet.client;
         let _contract = SimpleToken::deploy(
@@ -232,7 +239,7 @@ mod test {
     #[async_std::test]
     async fn test_transfer() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
-        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint(), 1)?;
         let addr = Address::random();
         let _receipt = wallet
             .transfer(addr, U256::from(1000000000000000u128), None)
@@ -253,7 +260,7 @@ mod test {
     #[async_std::test]
     async fn test_erc20_mint_max_value() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
-        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint(), 1)?;
 
         let erc20_contract = SimpleToken::deploy(
             wallet.client.clone(),
@@ -280,7 +287,7 @@ mod test {
     #[async_std::test]
     async fn test_erc20() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
-        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint())?;
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint(), 1)?;
 
         let erc20_contract = SimpleToken::deploy(
             wallet.client.clone(),
@@ -332,6 +339,52 @@ mod test {
 
         let balance = wallet.balance_erc20(contract_addr).await?;
         assert_eq!(balance, initial_balance);
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn test_deploy_contract_with_builder() -> anyhow::Result<()> {
+        let anvil = Anvil::new().chain_id(1u64).spawn();
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint(), 1)?;
+
+        let erc20_contract = SimpleToken::deploy(
+            wallet.client.clone(),
+            ("name".to_string(), "symbol".to_string(), U256::from(18)),
+        )
+        .unwrap();
+
+        let data = erc20_contract.deployer.tx.data().unwrap();
+        let data = append_calldata_with_builder_address(data.clone(), Address::random());
+        let new_tx = erc20_contract.data(data);
+        let contract = new_tx.send().await?;
+        let contract_addr = contract.address();
+
+        let amount = U256::from(1000);
+
+        wallet
+            .mint_erc20(contract_addr, wallet.client.address(), amount, None)
+            .await?;
+        wallet
+            .mint_erc20(
+                contract_addr,
+                wallet.client.address(),
+                amount,
+                Some(Address::random()),
+            )
+            .await?;
+
+        let decimals = contract.decimals().call().await?;
+        let decimal_amount = amount * U256::exp10(decimals as usize);
+        let initial_balance = U256::from(100) * U256::exp10(decimals as usize);
+        let balance = wallet.balance_erc20(contract_addr).await?;
+        assert_eq!(
+            balance,
+            decimal_amount
+                .checked_mul(2.into())
+                .unwrap()
+                .checked_add(initial_balance)
+                .unwrap()
+        );
         Ok(())
     }
 }
