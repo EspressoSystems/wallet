@@ -341,4 +341,50 @@ mod test {
         assert_eq!(balance, initial_balance);
         Ok(())
     }
+
+    #[async_std::test]
+    async fn test_deploy_contract_with_builder() -> anyhow::Result<()> {
+        let anvil = Anvil::new().chain_id(1u64).spawn();
+        let wallet = EspressoWallet::new(MNEMONIC.into(), 0, anvil.endpoint(), 1)?;
+
+        let erc20_contract = SimpleToken::deploy(
+            wallet.client.clone(),
+            ("name".to_string(), "symbol".to_string(), U256::from(18)),
+        )
+        .unwrap();
+
+        let data = erc20_contract.deployer.tx.data().unwrap();
+        let data = append_calldata_with_builder_address(data.clone(), Address::random());
+        let new_tx = erc20_contract.data(data);
+        let contract = new_tx.send().await?;
+        let contract_addr = contract.address();
+
+        let amount = U256::from(1000);
+
+        wallet
+            .mint_erc20(contract_addr, wallet.client.address(), amount, None)
+            .await?;
+        wallet
+            .mint_erc20(
+                contract_addr,
+                wallet.client.address(),
+                amount,
+                Some(Address::random()),
+            )
+            .await?;
+
+        let decimals = contract.decimals().call().await?;
+        let decimal_amount = amount * U256::exp10(decimals as usize);
+        let initial_balance = U256::from(100) * U256::exp10(decimals as usize);
+        let balance = wallet.balance_erc20(contract_addr).await?;
+        assert_eq!(
+            balance,
+            decimal_amount
+                .checked_mul(2.into())
+                .unwrap()
+                .checked_add(initial_balance)
+                .unwrap()
+        );
+        Ok(())
+    }
 }
