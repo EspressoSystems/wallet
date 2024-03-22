@@ -5,13 +5,8 @@ pragma solidity ^0.8.0;
 interface IERC20 {
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
     function transferFrom(address sender, address recipient, uint256 amount)
         external
@@ -20,9 +15,7 @@ interface IERC20 {
 
 contract ERC20 is IERC20 {
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner, address indexed spender, uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     uint256 public totalSupply;
     mapping(address user => uint256 balance) public balanceOf;
@@ -37,10 +30,7 @@ contract ERC20 is IERC20 {
         decimals = _decimals;
     }
 
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool)
-    {
+    function transfer(address recipient, uint256 amount) external returns (bool) {
         balanceOf[msg.sender] -= amount;
         balanceOf[recipient] += amount;
         emit Transfer(msg.sender, recipient, amount);
@@ -65,7 +55,7 @@ contract ERC20 is IERC20 {
     }
 
     function _mint(address to, uint256 amount) internal {
-	require(amount <= 100 * 10 ** uint256(24), "Too much mint");
+        require(amount <= 100 * 10 ** uint256(24), "Too much mint");
 
         balanceOf[to] += amount;
         totalSupply += amount;

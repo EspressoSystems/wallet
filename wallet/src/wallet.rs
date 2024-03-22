@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::contracts::erc20::ERC20 as Erc20Contract;
 use anyhow::Result;
 use commit::{self, Commitment, Committable, RawCommitmentBuilder};
+use contract_bindings::erc20::ERC20 as Erc20Contract;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::signers::coins_bip39::English;
@@ -185,7 +185,7 @@ impl Committable for DummyCommittable {
 
 #[cfg(test)]
 mod test {
-    use crate::contracts::simple_token::SimpleToken;
+    use contract_bindings::simple_token::SimpleToken;
 
     use super::*;
     use ethers::utils::Anvil;

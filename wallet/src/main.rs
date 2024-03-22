@@ -1,5 +1,4 @@
 mod builder;
-mod contracts;
 mod wallet;
 
 use builder::get_builder_address;

@@ -22,7 +22,8 @@ node_modules/
 
 **/*DS_Store
 
-# solidity files cache
-cache
-
-out
+# smart contracts
+contracts/*
+!contracts/src
+!contracts/script
+!contracts/broadcast
