@@ -23,7 +23,5 @@ node_modules/
 **/*DS_Store
 
 # smart contracts
-contracts/*
-!contracts/src
-!contracts/script
-!contracts/broadcast
+contracts/cache
+contracts/out
