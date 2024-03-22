@@ -33,9 +33,11 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: extractions/setup-just@v1
+
       - name: Enable Rust Caching
         uses: Swatinem/rust-cache@v2
 
       - name: Test
-        run: cargo test -p wallet nitro::test
+        run: just nitro-test
         timeout-minutes: 10
