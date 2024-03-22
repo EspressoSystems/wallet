@@ -9,7 +9,7 @@ use ethers::{prelude::*, signers::coins_bip39::English};
 use crate::wait_for_condition;
 
 #[async_std::test]
-async fn integration_my_test() -> Result<()> {
+async fn test() -> Result<()> {
     // build the release first
     Command::new("cargo")
         .arg("build")
