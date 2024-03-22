@@ -3,7 +3,10 @@ mod wallet;
 
 use builder::get_builder_address;
 use clap::{Parser, Subcommand};
-use ethers::types::{Address, U256};
+use ethers::{
+    providers::{Http, Middleware, Provider},
+    types::{Address, U256},
+};
 use std::str::FromStr;
 use wallet::EspressoWallet;
 
@@ -15,8 +18,13 @@ pub struct Cli {
     #[clap(long, env = "ROLLUP_RPC_URL")]
     rollup_rpc_url: String,
 
+    /// The url for fetching the builder address.
     #[clap(long, env = "BUILDER_URL", default_value = "")]
     builder_url: String,
+
+    /// The builder address without the prefix`0x`. Lower priority than `builder_url`.
+    #[clap(long, env = "BUILDER_ADDRESS", default_value = "")]
+    builder_addr: String,
 
     #[clap(long, env = "ACCOUNT_INDEX", default_value = "0")]
     account_index: u32,
@@ -76,10 +84,16 @@ enum Commands {
 #[async_std::main]
 async fn main() {
     let cli = Cli::parse();
-    let wallet = EspressoWallet::new(cli.mnemonic, cli.account_index, cli.rollup_rpc_url);
+    let provider = Provider::<Http>::try_from(&cli.rollup_rpc_url).unwrap();
+    let id = provider.get_chainid().await.unwrap();
+    let wallet = EspressoWallet::new(
+        cli.mnemonic,
+        cli.account_index,
+        cli.rollup_rpc_url,
+        id.as_u64(),
+    );
     if let Err(e) = wallet {
-        eprintln!("failed to create a wallet: {}", e);
-        return;
+        panic!("failed to create a wallet: {}", e);
     }
     let wallet = wallet.unwrap();
 
@@ -90,12 +104,22 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr = if *guaranteed_by_builder {
-                Some(get_builder_address())
+                if cli.builder_url.is_empty() {
+                    Some(get_builder_address())
+                } else if !cli.builder_addr.is_empty() {
+                    Some(
+                        Address::from_str(&cli.builder_addr)
+                            .expect("Invalid builder address. Maybe remove the prefix `0x`?"),
+                    )
+                } else {
+                    None
+                }
             } else {
                 None
             };
 
-            let to_addr = Address::from_str(to).unwrap();
+            let to_addr =
+                Address::from_str(to).expect("Invalid to address. Maybe remove the prefix `0x`?");
             let receipt = wallet
                 .transfer(to_addr, U256::from(*amount), builder_addr)
                 .await
@@ -128,7 +152,7 @@ async fn main() {
         Commands::BalanceErc20 { contract_address } => {
             let contract_addr = Address::from_str(contract_address).unwrap();
             let balance = wallet.balance_erc20(contract_addr).await.unwrap();
-            println!("{:?}", balance);
+            println!("{:?}", balance.to_string());
         }
         Commands::MintErc20 {
             contract_address,
