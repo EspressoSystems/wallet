@@ -22,7 +22,7 @@ pub struct Cli {
     #[clap(long, env = "BUILDER_URL", default_value = "")]
     builder_url: String,
 
-    /// The builder address without the prefix`0x`. Lower priority than `builder_url`.
+    /// The builder address. Lower priority than `builder_url`.
     #[clap(long, env = "BUILDER_ADDRESS", default_value = "")]
     builder_addr: String,
 
@@ -108,8 +108,9 @@ async fn main() {
                     Some(get_builder_address())
                 } else if !cli.builder_addr.is_empty() {
                     Some(
-                        Address::from_str(&cli.builder_addr)
-                            .expect("Invalid builder address. Maybe remove the prefix `0x`?"),
+                        cli.builder_addr
+                            .parse::<Address>()
+                            .expect("Invalid builder address."),
                     )
                 } else {
                     None
@@ -118,8 +119,7 @@ async fn main() {
                 None
             };
 
-            let to_addr =
-                Address::from_str(to).expect("Invalid to address. Maybe remove the prefix `0x`?");
+            let to_addr = to.parse::<Address>().expect("Invalid to address.");
             let receipt = wallet
                 .transfer(to_addr, U256::from(*amount), builder_addr)
                 .await
@@ -141,8 +141,8 @@ async fn main() {
             } else {
                 None
             };
-            let to_addr = Address::from_str(to).unwrap();
-            let contract_addr = Address::from_str(contract_address).unwrap();
+            let to_addr = to.parse::<Address>().unwrap();
+            let contract_addr = contract_address.parse::<Address>().unwrap();
             let receipt = wallet
                 .transfer_erc20(contract_addr, to_addr, U256::from(*amount), builder_addr)
                 .await
@@ -150,7 +150,7 @@ async fn main() {
             println!("{:?}", receipt);
         }
         Commands::BalanceErc20 { contract_address } => {
-            let contract_addr = Address::from_str(contract_address).unwrap();
+            let contract_addr = contract_address.parse::<Address>().unwrap();
             let balance = wallet.balance_erc20(contract_addr).await.unwrap();
             println!("{:?}", balance.to_string());
         }
@@ -165,8 +165,8 @@ async fn main() {
             } else {
                 None
             };
-            let to_addr = Address::from_str(to).unwrap();
-            let contract_addr = Address::from_str(contract_address).unwrap();
+            let to_addr = to.parse::<Address>().unwrap();
+            let contract_addr = contract_address.parse::<Address>().unwrap();
             let receipt = wallet
                 .mint_erc20(contract_addr, to_addr, U256::from(*amount), builder_addr)
                 .await
@@ -179,16 +179,12 @@ async fn main() {
 #[cfg(test)]
 mod test {
     use assert_cmd::Command;
-    use ethers::utils::Anvil;
+    use ethers::{types::Address, utils::Anvil};
 
     static MNEMONIC: &str = "test test test test test test test test test test test junk";
     #[test]
     fn test_bin_balance() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
-        dbg!(env!("CARGO_PKG_NAME"));
-        dbg!(env!("CARGO_BIN_NAME"));
-        let path = assert_cmd::cargo::cargo_bin(env!("CARGO_PKG_NAME"));
-        dbg!(path);
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
         cmd.env("MNEMONIC", MNEMONIC)
             .env("ROLLUP_RPC_URL", anvil.endpoint())
@@ -202,16 +198,17 @@ mod test {
     #[test]
     fn test_bin_transfer() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
-        let addr = "0xdcfd71e8bc0fef04efab73bd0d79e3b1106b4067";
-
+        // Include builder address to catch parsing errors.
+        let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
         cmd.env("MNEMONIC", MNEMONIC)
             .env("ROLLUP_RPC_URL", anvil.endpoint())
+            .env("BUILDER_ADDRESS", valid_builder_address)
             .arg("transfer")
             .arg("--amount")
             .arg("1")
             .arg("--to")
-            .arg(addr)
+            .arg(format!("{:x}", Address::random()))
             .assert()
             .success();
 

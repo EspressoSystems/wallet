@@ -133,7 +133,6 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .current_dir(wallet_dir)
         .output()?;
-    dbg!(balance_output.stdout);
     assert!(balance_output.stderr.is_empty());
 
     let transfer_output = Command::new("wallet")
@@ -164,7 +163,7 @@ async fn test() -> Result<()> {
     assert!(transfer_with_invalid_builder.stdout.is_empty());
     assert!(!transfer_with_invalid_builder.stderr.is_empty());
 
-    let valid_builder_address = "23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
+    let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
     let transfer_with_valid_builder = Command::new("wallet")
         .arg("transfer")
         .arg("--to")
