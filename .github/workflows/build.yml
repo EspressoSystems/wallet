@@ -35,11 +35,11 @@ jobs:
             target: x86_64-pc-windows-msvc
             binary-name: wallet.exe
     steps:
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
       - name: Checkout Repository
         uses: actions/checkout@v3
+
+      - name: Install target
+        run: rustup target add ${{ matrix.target }}
 
       - name: Build Release
         run: cargo build --release --target ${{ matrix.target }}
