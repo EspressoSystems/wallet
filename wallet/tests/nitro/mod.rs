@@ -60,13 +60,14 @@ async fn test() -> Result<()> {
     wallet_dir.push("nix");
     wallet_dir.push("release");
     dbg!(&wallet_dir.display());
+
     // let wallet_dir = "target/nix/release";
     // build the release first
     Command::new("cargo")
         .arg("build")
         .arg("--release")
         .arg("--target-dir")
-        .arg(path.as_path())
+        .arg(wallet_dir.as_path())
         .output()?;
 
     Command::new("docker")
