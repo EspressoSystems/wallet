@@ -129,7 +129,7 @@ async fn test() -> Result<()> {
     assert!(l2_is_good);
 
     let wallet_dir = "target/nix/release";
-    let balance_output = Command::new("wallet")
+    let balance_output = Command::new("./wallet")
         .arg("balance")
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
@@ -138,7 +138,7 @@ async fn test() -> Result<()> {
         .output()?;
     assert!(balance_output.status.success());
 
-    let transfer_output = Command::new("wallet")
+    let transfer_output = Command::new("./wallet")
         .arg("transfer")
         .arg("--to")
         .arg(format!("0x{:x}", Address::random()))
@@ -152,7 +152,7 @@ async fn test() -> Result<()> {
 
     assert_output_is_receipt(transfer_output);
     let dummy_address = format!("0x{:x}", Address::from_slice(&[1u8; 20]));
-    let transfer_with_invalid_builder = Command::new("wallet")
+    let transfer_with_invalid_builder = Command::new("./wallet")
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address)
@@ -170,7 +170,7 @@ async fn test() -> Result<()> {
     let dummy_address = format!("0x{:x}", Address::from_slice(&[2u8; 20]));
 
     let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
-    let transfer_with_valid_builder = Command::new("wallet")
+    let transfer_with_valid_builder = Command::new("./wallet")
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address)
@@ -199,7 +199,7 @@ async fn test() -> Result<()> {
 
     let erc20_addr = "0xB7Fc0E52ec06F125F3afebA199248c79F71c2e3a";
 
-    let output = Command::new("wallet")
+    let output = Command::new("./wallet")
         .arg("mint-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -215,7 +215,7 @@ async fn test() -> Result<()> {
 
     assert!(output.status.success());
 
-    let output = Command::new("wallet")
+    let output = Command::new("./wallet")
         .arg("mint-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -233,7 +233,7 @@ async fn test() -> Result<()> {
 
     assert!(output.status.success());
 
-    let output = Command::new("wallet")
+    let output = Command::new("./wallet")
         .arg("balance-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
