@@ -46,12 +46,21 @@ impl Drop for Cleanup {
 async fn test() -> Result<()> {
     let _teardown = Cleanup;
 
+    dbg!(std::env::var("CARGO_TARGET_DIR").unwrap());
+    let paths = std::fs::read_dir("./").unwrap();
+
+    for path in paths {
+        println!("Name: {}", path.unwrap().path().display())
+    }
+
     let mut path = std::env::current_dir()?;
-    dbg!("The current directory is {}", path.display());
+    dbg!(path.display());
     path.push("target");
+    dbg!(path.display());
     let mut wallet_dir = path.clone();
     wallet_dir.push("nix");
     wallet_dir.push("release");
+    dbg!(&wallet_dir.display());
     // let wallet_dir = "target/nix/release";
     // build the release first
     Command::new("cargo")
