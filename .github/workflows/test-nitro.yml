@@ -25,11 +25,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Check docker-compose version
-        run: docker-compose --version
-
-      - name: Check PATH
-        run: echo $PATH
+      - name: Install latest docker-compose
+        run: |
+          wget https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -O ~/.local/bin/docker-compose
+          docker-compose --version
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
