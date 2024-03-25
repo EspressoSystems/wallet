@@ -55,9 +55,9 @@ async fn test() -> Result<()> {
     let mut path = std::env::current_dir()?;
     dbg!(path.display());
     path.push("target");
+    path.push("nix");
     dbg!(path.display());
     let mut wallet_dir = path.clone();
-    wallet_dir.push("nix");
     wallet_dir.push("release");
     dbg!(&wallet_dir.display());
 
@@ -67,8 +67,15 @@ async fn test() -> Result<()> {
         .arg("build")
         .arg("--release")
         .arg("--target-dir")
-        .arg(wallet_dir.as_path())
+        .arg(path.as_path())
         .output()?;
+
+    // check that there is a binary in dir
+    let output = Command::new("./wallet")
+        .arg("--help")
+        .current_dir(&wallet_dir)
+        .output()?;
+    dbg!(output);
 
     Command::new("docker")
         .current_dir(NITRO_WORK_DIR)
