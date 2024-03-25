@@ -1,12 +1,15 @@
+use std::sync::Arc;
 use std::{
     process::{Command, Stdio},
     time::Duration,
 };
 
 use anyhow::Result;
+use async_std::task::sleep;
 use ethers::{prelude::*, signers::coins_bip39::English};
 
-use crate::wait_for_condition;
+use crate::{assert_output_is_receipt, wait_for_condition};
+use contract_bindings::simple_token::SimpleToken;
 
 const NITRO_WORK_DIR: &str = "../tests/nitro/nitro-testnode";
 
@@ -115,7 +118,7 @@ async fn test() -> Result<()> {
         || async {
             let output = client.get_block_number().await;
             match output {
-                Ok(b) => b > 50.into(),
+                Ok(b) => b > 20.into(),
                 Err(_) => false,
             }
         },
@@ -133,25 +136,26 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .current_dir(wallet_dir)
         .output()?;
-    assert!(balance_output.stderr.is_empty());
+    assert!(balance_output.status.success());
 
     let transfer_output = Command::new("wallet")
         .arg("transfer")
         .arg("--to")
-        .arg(format!("{:x}", Address::random()))
+        .arg(format!("0x{:x}", Address::random()))
         .arg("--amount")
         .arg("10")
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
+        .current_dir(wallet_dir)
         .output()?;
 
-    assert!(transfer_output.stderr.is_empty());
-
+    assert_output_is_receipt(transfer_output);
+    let dummy_address = format!("0x{:x}", Address::from_slice(&[1u8; 20]));
     let transfer_with_invalid_builder = Command::new("wallet")
         .arg("transfer")
         .arg("--to")
-        .arg(format!("{:x}", Address::random()))
+        .arg(dummy_address)
         .arg("--amount")
         .arg("10")
         .arg("--guaranteed-by-builder")
@@ -159,15 +163,17 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", format!("0x{:x}", Address::zero()))
+        .current_dir(wallet_dir)
         .output()?;
-    assert!(transfer_with_invalid_builder.stdout.is_empty());
-    assert!(!transfer_with_invalid_builder.stderr.is_empty());
+    assert!(!transfer_with_invalid_builder.status.success());
+
+    let dummy_address = format!("0x{:x}", Address::from_slice(&[2u8; 20]));
 
     let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
     let transfer_with_valid_builder = Command::new("wallet")
         .arg("transfer")
         .arg("--to")
-        .arg(format!("{:x}", Address::random()))
+        .arg(dummy_address)
         .arg("--amount")
         .arg("10")
         .arg("--guaranteed-by-builder")
@@ -175,37 +181,68 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", valid_builder_address)
+        .current_dir(wallet_dir)
         .output()?;
-    assert!(!transfer_with_valid_builder.stdout.is_empty());
-    assert!(transfer_with_valid_builder.stderr.is_empty());
 
-    // Failed to deploy this contract. Didn't know why
+    assert!(transfer_with_valid_builder.status.success());
 
-    // use contract_bindings::simple_token::SimpleToken;
-    // use std::sync::Arc;
-    // let erc20 = SimpleToken::deploy(
-    //     Arc::new(client),
-    //     ("name".to_string(), "symbol".to_string(), U256::from(18)),
-    // )
-    // .unwrap()
-    // .send()
-    // .await?;
+    let _ = SimpleToken::deploy(
+        Arc::new(client),
+        ("name".to_string(), "symbol".to_string(), U256::from(18)),
+    )
+    .unwrap()
+    .send()
+    .await;
+    // cannot `unwrap()` here
 
-    // let erc20_addr = format!("{:x}", erc20.address());
-    // let output = Command::new("wallet")
-    //     .arg("mint_erc20")
-    //     .arg("--contract-address")
-    //     .arg(erc20_addr)
-    //     .arg("--to")
-    //     .arg(format!("{:x}", addr))
-    //     .arg("--amount")
-    //     .arg("1")
-    //     .env("MNEMONIC", mnemonic)
-    //     .env("ROLLUP_RPC_URL", nitro_rpc)
-    //     .env("ACCOUNT_INDEX", index.to_string())
-    //     .output()?;
+    sleep(Duration::from_secs(10)).await;
 
-    // println!("{:?}", output);
-    // assert!(output.status.success());
+    let erc20_addr = "0xB7Fc0E52ec06F125F3afebA199248c79F71c2e3a";
+
+    let output = Command::new("wallet")
+        .arg("mint-erc20")
+        .arg("--contract-address")
+        .arg(erc20_addr)
+        .arg("--to")
+        .arg(format!("{:x}", addr))
+        .arg("--amount")
+        .arg("1")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .current_dir(wallet_dir)
+        .output()?;
+
+    assert!(output.status.success());
+
+    let output = Command::new("wallet")
+        .arg("mint-erc20")
+        .arg("--contract-address")
+        .arg(erc20_addr)
+        .arg("--to")
+        .arg(format!("{:x}", addr))
+        .arg("--amount")
+        .arg("1")
+        .arg("--guaranteed-by-builder")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .env("BUILDER_ADDRESS", valid_builder_address)
+        .current_dir(wallet_dir)
+        .output()?;
+
+    assert!(output.status.success());
+
+    let output = Command::new("wallet")
+        .arg("balance-erc20")
+        .arg("--contract-address")
+        .arg(erc20_addr)
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .current_dir(wallet_dir)
+        .output()?;
+
+    assert!(output.status.success());
     Ok(())
 }

@@ -59,7 +59,7 @@ impl EspressoWallet {
         let gas_price = self.client.get_gas_price().await?;
         let nonce = self.get_account_nounce().await?;
         let chain_id = self.client.get_chainid().await?.as_u64();
-        let mut tx_request = TransactionRequest {
+        let tx_request = TransactionRequest {
             from: Some(self.client.address()),
             to: Some(to.into()),
             value: Some(amount),
@@ -69,12 +69,11 @@ impl EspressoWallet {
             ..Default::default()
         };
 
+        let mut calldata = Bytes::new();
         if let Some(b) = builder {
-            let mut extra_data = [0u8; 52];
-            extra_data[0..32].copy_from_slice(MAGIC_BYTES.as_slice());
-            extra_data[32..52].copy_from_slice(b.as_bytes());
-            tx_request = tx_request.data(extra_data);
+            calldata = append_calldata_with_builder_address(calldata, b);
         };
+        let tx_request = tx_request.data(calldata);
         let receipt = self.send_transaction(tx_request).await?;
         Ok(receipt)
     }
@@ -153,8 +152,18 @@ impl EspressoWallet {
 
     #[inline]
     async fn send_transaction(&self, tx: TransactionRequest) -> Result<TransactionReceipt> {
+        let interval = if cfg!(test) {
+            Duration::from_millis(10)
+        } else {
+            Duration::from_secs(1)
+        };
         let pending_tx = self.client.send_transaction(tx, None);
-        let receipt = pending_tx.await?.await?.unwrap();
+        let receipt = pending_tx
+            .await?
+            .retries(10)
+            .interval(interval)
+            .await?
+            .expect("Cannot get the receipt");
         Ok(receipt)
     }
 
@@ -169,7 +178,7 @@ impl EspressoWallet {
 fn append_calldata_with_builder_address(calldata: Bytes, builder: Address) -> Bytes {
     let mut extra_data = [0u8; 52];
     extra_data[0..32].copy_from_slice(MAGIC_BYTES.as_slice());
-    extra_data[32..52].copy_from_slice(builder.as_bytes());
+    extra_data[32..52].copy_from_slice(builder.as_fixed_bytes());
 
     let mut data_vec = calldata.to_vec();
     data_vec.extend_from_slice(&extra_data);

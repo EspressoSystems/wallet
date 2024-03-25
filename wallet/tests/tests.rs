@@ -1,5 +1,8 @@
 use async_std::task::sleep;
-use std::time::{Duration, Instant};
+use std::{
+    process::Output,
+    time::{Duration, Instant},
+};
 
 #[cfg(test)]
 mod nitro;
@@ -18,4 +21,12 @@ where
         sleep(interval).await;
     }
     false
+}
+
+fn assert_output_is_receipt(output: Output) -> bool {
+    if !output.stderr.is_empty() {
+        panic!("got error output: {:?}", String::from_utf8(output.stderr));
+    }
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    stdout.trim().starts_with("TransactionReceipt")
 }

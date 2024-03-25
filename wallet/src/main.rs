@@ -103,7 +103,7 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr = if *guaranteed_by_builder {
-                if cli.builder_url.is_empty() {
+                if !cli.builder_url.is_empty() {
                     Some(get_builder_address())
                 } else if !cli.builder_addr.is_empty() {
                     Some(
@@ -136,7 +136,17 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr = if *guaranteed_by_builder {
-                Some(get_builder_address())
+                if !cli.builder_url.is_empty() {
+                    Some(get_builder_address())
+                } else if !cli.builder_addr.is_empty() {
+                    Some(
+                        cli.builder_addr
+                            .parse::<Address>()
+                            .expect("Invalid builder address."),
+                    )
+                } else {
+                    None
+                }
             } else {
                 None
             };
@@ -160,7 +170,17 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr = if *guaranteed_by_builder {
-                Some(get_builder_address())
+                if !cli.builder_url.is_empty() {
+                    Some(get_builder_address())
+                } else if !cli.builder_addr.is_empty() {
+                    Some(
+                        cli.builder_addr
+                            .parse::<Address>()
+                            .expect("Invalid builder address."),
+                    )
+                } else {
+                    None
+                }
             } else {
                 None
             };
@@ -168,9 +188,11 @@ async fn main() {
             let contract_addr = contract_address.parse::<Address>().unwrap();
             let receipt = wallet
                 .mint_erc20(contract_addr, to_addr, U256::from(*amount), builder_addr)
-                .await
-                .unwrap();
-            println!("{:?}", receipt);
+                .await;
+            match receipt {
+                Ok(r) => println!("{:?}", r),
+                Err(e) => panic!("got error: {:?}", e),
+            }
         }
     }
 }
