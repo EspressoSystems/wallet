@@ -63,6 +63,10 @@ jobs:
           cd tests/nitro/nitro-testnode
           docker compose build
 
+      - name: env
+        run: |
+          tree
+
       - name: Test Nitro
         run: just nitro-test
         timeout-minutes: 20

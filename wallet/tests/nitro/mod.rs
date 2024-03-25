@@ -46,10 +46,19 @@ impl Drop for Cleanup {
 async fn test() -> Result<()> {
     let _teardown = Cleanup;
 
+    let mut path = std::env::current_dir()?;
+    dbg!("The current directory is {}", path.display());
+    path.push("target");
+    let mut wallet_dir = path.clone();
+    wallet_dir.push("nix");
+    wallet_dir.push("release");
+    // let wallet_dir = "target/nix/release";
     // build the release first
     Command::new("cargo")
         .arg("build")
         .arg("--release")
+        .arg("--target-dir")
+        .arg(path.as_path())
         .output()?;
 
     Command::new("docker")
@@ -128,13 +137,12 @@ async fn test() -> Result<()> {
     .await;
     assert!(l2_is_good);
 
-    let wallet_dir = "target/nix/release";
     let balance_output = Command::new("./wallet")
         .arg("balance")
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
     assert!(balance_output.status.success());
 
@@ -147,7 +155,7 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert_output_is_receipt(transfer_output);
@@ -163,7 +171,7 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", format!("0x{:x}", Address::zero()))
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
     assert!(!transfer_with_invalid_builder.status.success());
 
@@ -181,7 +189,7 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", valid_builder_address)
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(transfer_with_valid_builder.status.success());
@@ -210,7 +218,7 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(output.status.success());
@@ -228,7 +236,7 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", valid_builder_address)
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(output.status.success());
@@ -240,7 +248,7 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(output.status.success());
