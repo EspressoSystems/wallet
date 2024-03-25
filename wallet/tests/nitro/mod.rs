@@ -46,11 +46,27 @@ impl Drop for Cleanup {
 async fn test() -> Result<()> {
     let _teardown = Cleanup;
 
+    let mut path = std::env::current_dir()?;
+    path.push("target");
+    path.push("nix");
+    let mut wallet_dir = path.clone();
+    wallet_dir.push("release");
+
     // build the release first
     Command::new("cargo")
         .arg("build")
         .arg("--release")
+        .arg("--target-dir")
+        .arg(path.as_path())
         .output()?;
+
+    // Sanity test to assert that we can locate the binary.
+    let output = Command::new("./wallet")
+        .arg("--help")
+        .current_dir(&wallet_dir)
+        .output()?;
+    dbg!(&output);
+    assert!(output.status.success());
 
     Command::new("docker")
         .current_dir(NITRO_WORK_DIR)
@@ -128,17 +144,16 @@ async fn test() -> Result<()> {
     .await;
     assert!(l2_is_good);
 
-    let wallet_dir = "target/nix/release";
-    let balance_output = Command::new("wallet")
+    let balance_output = Command::new("./wallet")
         .arg("balance")
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
     assert!(balance_output.status.success());
 
-    let transfer_output = Command::new("wallet")
+    let transfer_output = Command::new("./wallet")
         .arg("transfer")
         .arg("--to")
         .arg(format!("0x{:x}", Address::random()))
@@ -147,12 +162,12 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert_output_is_receipt(transfer_output);
     let dummy_address = format!("0x{:x}", Address::from_slice(&[1u8; 20]));
-    let transfer_with_invalid_builder = Command::new("wallet")
+    let transfer_with_invalid_builder = Command::new("./wallet")
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address)
@@ -163,14 +178,14 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", format!("0x{:x}", Address::zero()))
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
     assert!(!transfer_with_invalid_builder.status.success());
 
     let dummy_address = format!("0x{:x}", Address::from_slice(&[2u8; 20]));
 
     let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
-    let transfer_with_valid_builder = Command::new("wallet")
+    let transfer_with_valid_builder = Command::new("./wallet")
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address)
@@ -181,7 +196,7 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", valid_builder_address)
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(transfer_with_valid_builder.status.success());
@@ -199,7 +214,7 @@ async fn test() -> Result<()> {
 
     let erc20_addr = "0xB7Fc0E52ec06F125F3afebA199248c79F71c2e3a";
 
-    let output = Command::new("wallet")
+    let output = Command::new("./wallet")
         .arg("mint-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -210,12 +225,12 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(output.status.success());
 
-    let output = Command::new("wallet")
+    let output = Command::new("./wallet")
         .arg("mint-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -228,19 +243,19 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", valid_builder_address)
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(output.status.success());
 
-    let output = Command::new("wallet")
+    let output = Command::new("./wallet")
         .arg("balance-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .current_dir(wallet_dir)
+        .current_dir(&wallet_dir)
         .output()?;
 
     assert!(output.status.success());

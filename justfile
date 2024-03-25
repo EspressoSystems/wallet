@@ -6,7 +6,8 @@ test:
     cargo test
 
 nitro-test:
-	cargo test -p wallet nitro::test
+	# cargo build --release
+	cargo test nitro::test
 
 check:
     pre-commit
