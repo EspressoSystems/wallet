@@ -46,7 +46,6 @@ impl Drop for Cleanup {
 async fn test() -> Result<()> {
     let _teardown = Cleanup;
 
-    dbg!(std::env::var("CARGO_TARGET_DIR").unwrap());
     let paths = std::fs::read_dir("./").unwrap();
 
     for path in paths {
