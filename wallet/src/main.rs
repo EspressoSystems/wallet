@@ -7,7 +7,6 @@ use ethers::{
     providers::{Http, Middleware, Provider},
     types::{Address, U256},
 };
-use std::str::FromStr;
 use wallet::EspressoWallet;
 
 #[derive(Parser, Debug)]

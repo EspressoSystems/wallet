@@ -181,7 +181,7 @@ async fn test() -> Result<()> {
 
     // Failed to deploy this contract. Didn't know why
 
-    // use contracts::simple_token::SimpleToken;
+    // use contract_bindings::simple_token::SimpleToken;
     // use std::sync::Arc;
     // let erc20 = SimpleToken::deploy(
     //     Arc::new(client),
