@@ -210,6 +210,9 @@
                 solc
                 nodePackages.prettier
                 solhint
+
+                # nitro integration test
+                docker-compose
               ] ++ lib.optionals stdenv.isDarwin
                 [ darwin.apple_sdk.frameworks.SystemConfiguration ]
               ++ lib.optionals (!stdenv.isDarwin) [ cargo-watch ] # broken on OSX

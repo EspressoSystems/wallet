@@ -5,6 +5,9 @@ test:
     cargo build # build the wallet executable
     cargo test
 
+nitro-test:
+	cargo test -p wallet nitro::test
+
 check:
     pre-commit
 

@@ -1,0 +1,68 @@
+name: Test Nitro
+
+on:
+  push:
+    branches:
+      - main
+      - release-*
+    tags:
+      # YYYYMMDD
+      - "20[0-9][0-9][0-1][0-9][0-3][0-9]*"
+  schedule:
+    - cron: "0 0 * * 1"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: '--cfg async_executor_impl="async-std" --cfg async_channel_impl="async-std"'
+  RUST_LOG: info,libp2p=off,node=error
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install latest docker-compose
+        run: |
+          mkdir -p ~/.local/bin
+          wget https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -O ~/.local/bin/docker-compose
+          chmod +x ~/.local/bin/docker-compose
+          docker-compose --version
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: extractions/setup-just@v1
+
+      - name: Enable Rust Caching
+        uses: Swatinem/rust-cache@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile') }}
+          restore-keys: ${{ runner.os }}-buildx-
+
+      - name: Build docker images
+        shell: bash
+        run: |
+          cd tests/nitro/nitro-testnode
+          docker compose build
+
+      - name: Test Nitro
+        run: just nitro-test
+        timeout-minutes: 20
