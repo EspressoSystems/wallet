@@ -7,7 +7,7 @@ test:
 
 nitro-test:
 	# cargo build --release
-	cargo test nitro::test -- --nocapture
+	cargo test nitro::test
 
 check:
     pre-commit
