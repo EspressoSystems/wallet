@@ -153,7 +153,7 @@ impl EspressoWallet {
     #[inline]
     async fn send_transaction(&self, tx: TransactionRequest) -> Result<TransactionReceipt> {
         let interval = if cfg!(test) {
-            Duration::from_millis(500)
+            Duration::from_secs(1)
         } else {
             Duration::from_secs(1)
         };
