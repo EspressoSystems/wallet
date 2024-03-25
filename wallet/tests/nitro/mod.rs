@@ -70,12 +70,13 @@ async fn test() -> Result<()> {
         .arg(path.as_path())
         .output()?;
 
-    // check that there is a binary in dir
+    // Sanity test to assert that we can locate the binary.
     let output = Command::new("./wallet")
         .arg("--help")
         .current_dir(&wallet_dir)
         .output()?;
-    dbg!(output);
+    dbg!(&output);
+    assert!(output.status.success());
 
     Command::new("docker")
         .current_dir(NITRO_WORK_DIR)
