@@ -23,8 +23,11 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-8
+    runs-on: ubuntu-latest
     steps:
+      - name: Check docker-compose version
+        run: docker-compose --version
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
@@ -53,8 +56,8 @@ jobs:
       - name: Build docker images
         shell: bash
         run: |
-            cd tests/nitro/nitro-testnode
-            docker compose build
+          cd tests/nitro/nitro-testnode
+          docker compose build
 
       - name: Test Nitro
         run: just nitro-test
