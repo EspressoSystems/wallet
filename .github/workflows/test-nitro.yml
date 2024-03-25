@@ -28,6 +28,9 @@ jobs:
       - name: Check docker-compose version
         run: docker-compose --version
 
+      - name: Check PATH
+        run: echo $PATH
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
