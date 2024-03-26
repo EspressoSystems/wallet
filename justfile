@@ -1,13 +1,11 @@
 default:
     just --list
 
-test:
-    cargo build # build the wallet executable
-    cargo test
+test *args:
+    cargo test {{args}}
 
-nitro-test:
-	# cargo build --release
-	cargo test nitro::test
+nitro-test *args:
+	cargo test nitro::test {{args}}
 
 check:
     pre-commit
