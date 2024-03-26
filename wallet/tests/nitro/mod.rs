@@ -82,6 +82,52 @@ async fn test() -> Result<()> {
         .stdout(Stdio::null())
         .spawn()?;
 
+    let mnemonic = "indoor dish desk flag debris potato excuse depart ticket judge file exit";
+    let index = 6_u32;
+    let nitro_rpc = "http://127.0.0.1:8547";
+    let provider = Provider::<Http>::try_from(nitro_rpc)?.interval(Duration::from_millis(10));
+    let wallet = MnemonicBuilder::<English>::default()
+        .phrase(mnemonic)
+        .index(index)?
+        .build()?
+        .with_chain_id(412346_u64);
+    let client = SignerMiddleware::new(provider, wallet);
+    let addr = client.address();
+
+    // Check the fund
+    let _ = wait_for_condition(
+        || async {
+            match client.get_balance(addr, None).await {
+                Ok(num) => {
+                    println!("querying the balance: {:?}", num);
+                    num > 0.into()
+                }
+                Err(e) => {
+                    eprintln!("failed to get balance: {:?}", e);
+                    false
+                }
+            }
+        },
+        Duration::from_secs(5),
+        Duration::from_secs(300),
+    )
+    .await;
+
+    // Wait for the testnode running completely
+    let l2_is_good = wait_for_condition(
+        || async {
+            let output = client.get_block_number().await;
+            match output {
+                Ok(b) => b > 50.into(),
+                Err(_) => false,
+            }
+        },
+        Duration::from_secs(5),
+        Duration::from_secs(250),
+    )
+    .await;
+    assert!(l2_is_good);
+
     let commitment_task_is_good = wait_for_condition(
         || async {
             let output = Command::new("curl")
@@ -100,49 +146,6 @@ async fn test() -> Result<()> {
     )
     .await;
     assert!(commitment_task_is_good);
-
-    let mnemonic = "indoor dish desk flag debris potato excuse depart ticket judge file exit";
-    let index = 6_u32;
-    let nitro_rpc = "http://127.0.0.1:8547";
-    let provider = Provider::<Http>::try_from(nitro_rpc)?.interval(Duration::from_millis(10));
-    let wallet = MnemonicBuilder::<English>::default()
-        .phrase(mnemonic)
-        .index(index)?
-        .build()?
-        .with_chain_id(412346_u64);
-    let client = SignerMiddleware::new(provider, wallet);
-    let addr = client.address();
-    let _ = wait_for_condition(
-        || async {
-            match client.get_balance(addr, None).await {
-                Ok(num) => {
-                    println!("{:?}", num);
-                    // wait for sufficient blocks
-                    num > 0.into()
-                }
-                Err(e) => {
-                    eprintln!("failed to get block number: {:?}", e);
-                    false
-                }
-            }
-        },
-        Duration::from_secs(5),
-        Duration::from_secs(300),
-    )
-    .await;
-    let l2_is_good = wait_for_condition(
-        || async {
-            let output = client.get_block_number().await;
-            match output {
-                Ok(b) => b > 20.into(),
-                Err(_) => false,
-            }
-        },
-        Duration::from_secs(5),
-        Duration::from_secs(90),
-    )
-    .await;
-    assert!(l2_is_good);
 
     let balance_output = Command::new("./wallet")
         .arg("balance")
@@ -255,6 +258,40 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
+        .current_dir(&wallet_dir)
+        .output()?;
+
+    assert!(output.status.success());
+
+    let output = Command::new("./wallet")
+        .arg("transfer-erc20")
+        .arg("--contract-address")
+        .arg(erc20_addr)
+        .arg("--to")
+        .arg(format!("{:x}", addr))
+        .arg("--amount")
+        .arg("1")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .current_dir(&wallet_dir)
+        .output()?;
+
+    assert!(output.status.success());
+
+    let output = Command::new("./wallet")
+        .arg("transfer-erc20")
+        .arg("--contract-address")
+        .arg(erc20_addr)
+        .arg("--to")
+        .arg(format!("{:x}", addr))
+        .arg("--amount")
+        .arg("1")
+        .arg("--guaranteed-by-builder")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .env("BUILDER_ADDRESS", valid_builder_address)
         .current_dir(&wallet_dir)
         .output()?;
 
