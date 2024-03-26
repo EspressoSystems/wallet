@@ -5,7 +5,7 @@ test *args:
     cargo test {{args}}
 
 nitro-test *args:
-	cargo test --release nitro::test {{args}}
+	cargo test nitro::test {{args}}
 
 check:
     pre-commit
