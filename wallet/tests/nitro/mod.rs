@@ -5,7 +5,6 @@ use std::{
 };
 
 use anyhow::Result;
-use async_std::task::sleep;
 use escargot::CargoBuild;
 use ethers::{prelude::*, signers::coins_bip39::English};
 
@@ -35,7 +34,7 @@ fn stop_and_remove_nitro() {
 
     let output_str = std::str::from_utf8(&output.stdout).unwrap().trim();
     if !output_str.is_empty() {
-        let containers = output_str.split("\n").collect::<Vec<_>>();
+        let containers = output_str.split('\n').collect::<Vec<_>>();
         println!("Removing containers {:?}", containers);
         Command::new("docker")
             .arg("rm")
@@ -57,7 +56,7 @@ fn stop_and_remove_nitro() {
 
     let output_str = std::str::from_utf8(&output.stdout).unwrap().trim();
     if !output_str.is_empty() {
-        let volumes = output_str.split("\n").collect::<Vec<_>>();
+        let volumes = output_str.split('\n').collect::<Vec<_>>();
         println!("Removing volumes {:?}", volumes);
         let output = Command::new("docker")
             .arg("volume")
@@ -113,7 +112,7 @@ async fn test() -> Result<()> {
     let mnemonic = "indoor dish desk flag debris potato excuse depart ticket judge file exit";
     let index = 6_u32;
     let nitro_rpc = "http://127.0.0.1:8547";
-    let provider = Provider::<Http>::try_from(nitro_rpc)?.interval(Duration::from_millis(10));
+    let provider = Provider::<Http>::try_from(nitro_rpc)?.interval(Duration::from_secs(5));
     let wallet = MnemonicBuilder::<English>::default()
         .phrase(mnemonic)
         .index(index)?
@@ -237,18 +236,14 @@ async fn test() -> Result<()> {
 
     assert!(transfer_with_valid_builder.status.success());
 
-    let _ = SimpleToken::deploy(
+    let contract = SimpleToken::deploy(
         Arc::new(client),
         ("name".to_string(), "symbol".to_string(), U256::from(18)),
-    )
-    .unwrap()
+    )?
     .send()
-    .await;
-    // cannot `unwrap()` here
+    .await?;
 
-    sleep(Duration::from_secs(10)).await;
-
-    let erc20_addr = "0xB7Fc0E52ec06F125F3afebA199248c79F71c2e3a";
+    let erc20_addr = &format!("{:x}", contract.address());
 
     let output = run_wallet()
         .arg("mint-erc20")
