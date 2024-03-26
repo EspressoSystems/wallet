@@ -230,6 +230,7 @@ mod test {
             .arg("1")
             .arg("--to")
             .arg(format!("{:x}", Address::random()))
+            .arg("--guaranteed-by-builder")
             .assert()
             .success();
 
