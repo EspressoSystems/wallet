@@ -124,12 +124,6 @@ async fn test() -> Result<()> {
     dbg!(&output);
     assert!(output.status.success());
 
-    Command::new("docker")
-        .current_dir(NITRO_WORK_DIR)
-        .arg("compose")
-        .arg("down")
-        .output()?;
-
     let _ = Command::new("./test-node.bash")
         .current_dir(NITRO_WORK_DIR)
         .arg("--init")
@@ -149,6 +143,7 @@ async fn test() -> Result<()> {
         .with_chain_id(412346_u64);
     let client = SignerMiddleware::new(provider, wallet);
     let addr = client.address();
+    let builder_url = std::env::var("ESPRESSO_SEQUENCER_BUILDER_ADDRESS").unwrap();
 
     // Check the funding
     let _ = wait_for_condition(
@@ -256,7 +251,7 @@ async fn test() -> Result<()> {
     let transfer_with_valid_builder = run_wallet()
         .arg("transfer")
         .arg("--to")
-        .arg(dummy_address)
+        .arg(dummy_address.clone())
         .arg("--amount")
         .arg("10")
         .arg("--guaranteed-by-builder")
@@ -265,8 +260,22 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_ADDRESS", valid_builder_address)
         .output()?;
-
     assert!(transfer_with_valid_builder.status.success());
+
+    println!("Transfer with Builder URL");
+    let transfer_with_builder_url = run_wallet()
+        .arg("transfer")
+        .arg("--to")
+        .arg(dummy_address)
+        .arg("--amount")
+        .arg("10")
+        .arg("--guaranteed-by-builder")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .env("BUILDER_URL", builder_url)
+        .output()?;
+    assert!(transfer_with_builder_url.status.success());
 
     println!("Deploying ERC20 token");
     let contract = SimpleToken::deploy(

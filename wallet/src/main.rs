@@ -104,7 +104,7 @@ async fn main() {
         } => {
             let builder_addr = if *guaranteed_by_builder {
                 if !cli.builder_url.is_empty() {
-                    Some(get_builder_address())
+                    Some(get_builder_address(cli.builder_url).await)
                 } else if !cli.builder_addr.is_empty() {
                     Some(
                         cli.builder_addr
@@ -137,7 +137,7 @@ async fn main() {
         } => {
             let builder_addr = if *guaranteed_by_builder {
                 if !cli.builder_url.is_empty() {
-                    Some(get_builder_address())
+                    Some(get_builder_address(cli.builder_url).await)
                 } else if !cli.builder_addr.is_empty() {
                     Some(
                         cli.builder_addr
@@ -171,7 +171,7 @@ async fn main() {
         } => {
             let builder_addr = if *guaranteed_by_builder {
                 if !cli.builder_url.is_empty() {
-                    Some(get_builder_address())
+                    Some(get_builder_address(cli.builder_url).await)
                 } else if !cli.builder_addr.is_empty() {
                     Some(
                         cli.builder_addr
