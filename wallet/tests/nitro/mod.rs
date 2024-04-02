@@ -144,7 +144,6 @@ async fn test() -> Result<()> {
         .with_chain_id(412346_u64);
     let client = SignerMiddleware::new(provider, wallet);
     let addr = client.address();
-    let builder_url = env::var("ESPRESSO_SEQUENCER_BUILDER_ADDRESS").unwrap();
 
     // Check the funding
     let funded = wait_for_condition(
@@ -190,9 +189,15 @@ async fn test() -> Result<()> {
     .await;
     assert!(l2_is_good);
 
+    dotenv::from_path(format!("{}/.env", NITRO_WORK_DIR)).unwrap();
+    let builder_url = env::var("ESPRESSO_SEQUENCER_BUILDER_ADDRESS").unwrap();
+    let commitment_task_url = format!(
+        "http://localhost:{}/api/hotshot_contract",
+        dotenv::var("ESPRESSO_COMMITMENT_TASK_PORT").unwrap(),
+    );
     let commitment_task_is_good = wait_for_condition(
         || async {
-            match reqwest::get("http://localhost:60000/api/hotshot_contract").await {
+            match reqwest::get(&commitment_task_url).await {
                 Ok(body) => !body.text().await.unwrap().is_empty(),
                 Err(e) => {
                     eprintln!("{}", e);
@@ -246,7 +251,9 @@ async fn test() -> Result<()> {
 
     println!("Doing a transfer with valid builder address");
     let dummy_address = format!("0x{:x}", Address::from_slice(&[2u8; 20]));
-    let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
+
+    let valid_builder_address =
+        dotenv::var("ESPRESSO_SEQUENCER_PREFUNDED_BUILDER_ACCOUNTS").unwrap();
     let transfer_with_valid_builder = run_wallet()
         .arg("transfer")
         .arg("--to")
@@ -257,7 +264,7 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .env("BUILDER_ADDRESS", valid_builder_address)
+        .env("BUILDER_ADDRESS", &valid_builder_address)
         .output()?;
     assert!(transfer_with_valid_builder.status.success());
 
@@ -315,7 +322,7 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .env("BUILDER_ADDRESS", valid_builder_address)
+        .env("BUILDER_ADDRESS", &valid_builder_address)
         .output()?;
 
     assert!(output.status.success());
