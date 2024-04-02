@@ -6,6 +6,5 @@ pub async fn get_builder_address(url: String) -> Address {
     let url = url.join("builderaddress").unwrap();
     let body = reqwest::get(url).await.unwrap().text().await.unwrap();
 
-    println!("body = {body:?}");
     body.to_string().parse::<Address>().unwrap()
 }
