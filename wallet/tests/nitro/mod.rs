@@ -1,6 +1,7 @@
 use std::process::Output;
 use std::sync::Arc;
 use std::{
+    env,
     process::{Command, Stdio},
     time::Duration,
 };
@@ -143,10 +144,10 @@ async fn test() -> Result<()> {
         .with_chain_id(412346_u64);
     let client = SignerMiddleware::new(provider, wallet);
     let addr = client.address();
-    let builder_url = std::env::var("ESPRESSO_SEQUENCER_BUILDER_ADDRESS").unwrap();
+    let builder_url = env::var("ESPRESSO_SEQUENCER_BUILDER_ADDRESS").unwrap();
 
     // Check the funding
-    let _ = wait_for_condition(
+    let funded = wait_for_condition(
         || async {
             println!("checking if nitro RPC is ready and client is funded");
             match client.get_balance(addr, None).await {
@@ -164,6 +165,7 @@ async fn test() -> Result<()> {
         Duration::from_secs(300),
     )
     .await;
+    assert!(funded);
 
     // Wait for the testnode running completely
     let min_block_num = 50.into();
@@ -190,15 +192,12 @@ async fn test() -> Result<()> {
 
     let commitment_task_is_good = wait_for_condition(
         || async {
-            let output = Command::new("curl")
-                .arg("http://localhost:60000/api/hotshot_contract")
-                .output();
-            if let Err(e) = output {
-                eprintln!("{}", e);
-                false
-            } else {
-                let output = output.unwrap();
-                !output.stdout.is_empty()
+            match reqwest::get("http://localhost:60000/api/hotshot_contract").await {
+                Ok(body) => !body.text().await.unwrap().is_empty(),
+                Err(e) => {
+                    eprintln!("{}", e);
+                    false
+                }
             }
         },
         Duration::from_secs(5),
