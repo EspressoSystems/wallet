@@ -1,3 +1,4 @@
+use std::process::Output;
 use std::sync::Arc;
 use std::{
     process::{Command, Stdio},
@@ -13,7 +14,24 @@ use contract_bindings::simple_token::SimpleToken;
 
 const NITRO_WORK_DIR: &str = "../tests/nitro/nitro-testnode";
 
-fn stop_and_remove_nitro() {
+#[derive(Clone, Debug, Copy)]
+enum OnError {
+    Abort,
+    Continue,
+}
+
+fn process_command_output(on_error: OnError, output: &Output) {
+    if !output.status.success() {
+        match on_error {
+            OnError::Abort => panic!("Command failed, aborting: {:?}", output.stderr),
+            OnError::Continue => {
+                println!("Command failed, trying to continue: {:?}", output.stderr)
+            }
+        }
+    }
+}
+
+fn stop_and_remove_nitro(on_error: OnError) {
     println!("Stopping nitro and removing containers");
     let output = Command::new("docker")
         .current_dir(NITRO_WORK_DIR)
@@ -21,7 +39,7 @@ fn stop_and_remove_nitro() {
         .arg("down")
         .output()
         .unwrap();
-    assert!(output.status.success());
+    process_command_output(on_error, &output);
 
     let output = Command::new("docker")
         .arg("ps")
@@ -30,18 +48,27 @@ fn stop_and_remove_nitro() {
         .arg("label=com.docker.compose.project=nitro-testnode")
         .output()
         .unwrap();
-    assert!(output.status.success());
+    process_command_output(on_error, &output);
 
     let output_str = std::str::from_utf8(&output.stdout).unwrap().trim();
     if !output_str.is_empty() {
         let containers = output_str.split('\n').collect::<Vec<_>>();
+
+        println!("Stopping containers {:?}", containers);
+        Command::new("docker")
+            .arg("stop")
+            .args(&containers)
+            .output()
+            .unwrap();
+        process_command_output(on_error, &output);
+
         println!("Removing containers {:?}", containers);
         Command::new("docker")
             .arg("rm")
-            .args(containers)
+            .args(&containers)
             .output()
             .unwrap();
-        assert!(output.status.success());
+        process_command_output(on_error, &output);
     }
 
     let output = Command::new("docker")
@@ -52,7 +79,7 @@ fn stop_and_remove_nitro() {
         .arg("label=com.docker.compose.project=nitro-testnode")
         .output()
         .unwrap();
-    assert!(output.status.success());
+    process_command_output(on_error, &output);
 
     let output_str = std::str::from_utf8(&output.stdout).unwrap().trim();
     if !output_str.is_empty() {
@@ -64,14 +91,15 @@ fn stop_and_remove_nitro() {
             .args(volumes)
             .output()
             .unwrap();
-        assert!(output.status.success());
+        process_command_output(on_error, &output);
     }
 }
 
 struct Cleanup;
 impl Drop for Cleanup {
     fn drop(&mut self) {
-        stop_and_remove_nitro();
+        // Try our best to clean up at the end of the test
+        stop_and_remove_nitro(OnError::Continue);
     }
 }
 
@@ -87,7 +115,8 @@ fn run_wallet() -> Command {
 
 #[async_std::test]
 async fn test() -> Result<()> {
-    stop_and_remove_nitro();
+    // Abort if we can't create a clean state before the test.
+    stop_and_remove_nitro(OnError::Abort);
     let _teardown = Cleanup;
 
     // Sanity test to assert that we can locate the binary.
@@ -183,6 +212,7 @@ async fn test() -> Result<()> {
     .await;
     assert!(commitment_task_is_good);
 
+    println!("Checking balance");
     let balance_output = run_wallet()
         .arg("balance")
         .env("MNEMONIC", mnemonic)
@@ -191,6 +221,7 @@ async fn test() -> Result<()> {
         .output()?;
     assert!(balance_output.status.success());
 
+    println!("Doing a transfer");
     let transfer_output = run_wallet()
         .arg("transfer")
         .arg("--to")
@@ -201,8 +232,9 @@ async fn test() -> Result<()> {
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
         .output()?;
-
     assert_output_is_receipt(transfer_output);
+
+    println!("Doing a transfer with invalid builder address");
     let dummy_address = format!("0x{:x}", Address::from_slice(&[1u8; 20]));
     let transfer_with_invalid_builder = run_wallet()
         .arg("transfer")
@@ -218,8 +250,8 @@ async fn test() -> Result<()> {
         .output()?;
     assert!(!transfer_with_invalid_builder.status.success());
 
+    println!("Doing a transfer with valid builder address");
     let dummy_address = format!("0x{:x}", Address::from_slice(&[2u8; 20]));
-
     let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
     let transfer_with_valid_builder = run_wallet()
         .arg("transfer")
@@ -236,6 +268,7 @@ async fn test() -> Result<()> {
 
     assert!(transfer_with_valid_builder.status.success());
 
+    println!("Deploying ERC20 token");
     let contract = SimpleToken::deploy(
         Arc::new(client),
         ("name".to_string(), "symbol".to_string(), U256::from(18)),
@@ -245,6 +278,7 @@ async fn test() -> Result<()> {
 
     let erc20_addr = &format!("{:x}", contract.address());
 
+    println!("Minting ERC20 tokens");
     let output = run_wallet()
         .arg("mint-erc20")
         .arg("--contract-address")
@@ -260,6 +294,7 @@ async fn test() -> Result<()> {
 
     assert!(output.status.success());
 
+    println!("Minting ERC20 tokens with selected builder");
     let output = run_wallet()
         .arg("mint-erc20")
         .arg("--contract-address")
@@ -277,6 +312,7 @@ async fn test() -> Result<()> {
 
     assert!(output.status.success());
 
+    println!("Checking ERC20 balance");
     let output = run_wallet()
         .arg("balance-erc20")
         .arg("--contract-address")
@@ -288,6 +324,7 @@ async fn test() -> Result<()> {
 
     assert!(output.status.success());
 
+    println!("Transferring ERC20 tokens");
     let output = run_wallet()
         .arg("transfer-erc20")
         .arg("--contract-address")
@@ -303,6 +340,7 @@ async fn test() -> Result<()> {
 
     assert!(output.status.success());
 
+    println!("Transferring ERC20 tokens with selected builder");
     let output = run_wallet()
         .arg("transfer-erc20")
         .arg("--contract-address")
