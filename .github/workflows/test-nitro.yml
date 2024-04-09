@@ -46,5 +46,5 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Test Nitro
-        run: just nitro-test
+        run: just nitro-test -- --nocapture
         timeout-minutes: 20
