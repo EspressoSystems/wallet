@@ -12,7 +12,7 @@ commit = { git = "https://github.com/EspressoSystems/commit" }
 contract-bindings = { path = "../contract-bindings" }
 ethers = "2.0"
 lazy_static = "1.4"
-reqwest = "0.11.26"
+reqwest = { version = "0.11.26", features = ["json"] }
 serde = { version = "1.0.195", features = ["derive"] }
 url = "2.5.0"
 
