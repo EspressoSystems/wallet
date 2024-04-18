@@ -1,7 +1,6 @@
 use std::process::Output;
 use std::sync::Arc;
 use std::{
-    env,
     process::{Command, Stdio},
     time::Duration,
 };
@@ -190,7 +189,10 @@ async fn test() -> Result<()> {
     assert!(l2_is_good);
 
     dotenv::from_path(format!("{}/.env", NITRO_WORK_DIR)).unwrap();
-    let builder_url = env::var("ESPRESSO_SEQUENCER_BUILDER_ADDRESS").unwrap();
+    let builder_url = format!(
+        "http://localhost:{}",
+        dotenv::var("ESPRESSO_BUILDER_SERVER_PORT").unwrap()
+    );
     let commitment_task_url = format!(
         "http://localhost:{}/api/hotshot_contract",
         dotenv::var("ESPRESSO_COMMITMENT_TASK_PORT").unwrap(),
