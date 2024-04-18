@@ -104,7 +104,8 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr =
-                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr);
+                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
+                    .await;
             let receipt = wallet
                 .transfer(*to, U256::from(*amount), builder_addr)
                 .await
@@ -122,7 +123,8 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr =
-                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr);
+                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
+                    .await;
             let receipt = wallet
                 .transfer_erc20(*contract_address, *to, U256::from(*amount), builder_addr)
                 .await
@@ -140,7 +142,8 @@ async fn main() {
             guaranteed_by_builder,
         } => {
             let builder_addr =
-                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr);
+                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
+                    .await;
             let receipt = wallet
                 .mint_erc20(*contract_address, *to, U256::from(*amount), builder_addr)
                 .await;
@@ -152,18 +155,19 @@ async fn main() {
     }
 }
 
-fn maybe_get_builder_addr(
+async fn maybe_get_builder_addr(
     guaranteed_by_builder: &bool,
     builder_url: Option<Url>,
     builder_addr: Option<Address>,
 ) -> Option<Address> {
-    guaranteed_by_builder
-        .then(|| {
-            builder_url
-                .map(|_url| get_builder_address())
-                .or(builder_addr)
-        })
-        .flatten()
+    if *guaranteed_by_builder {
+        if let Some(url) = builder_url {
+            return Some(get_builder_address(url).await);
+        };
+        builder_addr
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
