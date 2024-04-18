@@ -264,7 +264,7 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_URL", builder_url)
         .output()?;
-    // TODO: comment out the following assertion after the builder is fixed
+    // TODO: enable the following assertion after the builder is fixed
     // assert!(transfer_with_builder_url.status.success());
 
     println!("Deploying ERC20 token");
