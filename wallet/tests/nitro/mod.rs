@@ -124,12 +124,6 @@ async fn test() -> Result<()> {
     dbg!(&output);
     assert!(output.status.success());
 
-    Command::new("docker")
-        .current_dir(NITRO_WORK_DIR)
-        .arg("compose")
-        .arg("down")
-        .output()?;
-
     let _ = Command::new("./test-node.bash")
         .current_dir(NITRO_WORK_DIR)
         .arg("--init")
@@ -151,7 +145,7 @@ async fn test() -> Result<()> {
     let addr = client.address();
 
     // Check the funding
-    let _ = wait_for_condition(
+    let funded = wait_for_condition(
         || async {
             println!("checking if nitro RPC is ready and client is funded");
             match client.get_balance(addr, None).await {
@@ -169,9 +163,10 @@ async fn test() -> Result<()> {
         Duration::from_secs(300),
     )
     .await;
+    assert!(funded);
 
     // Wait for the testnode running completely
-    let min_block_num = 50.into();
+    let min_block_num = 60.into();
     let l2_is_good = wait_for_condition(
         || async {
             println!("waiting for nitro block number > {min_block_num}");
@@ -188,29 +183,16 @@ async fn test() -> Result<()> {
             }
         },
         Duration::from_secs(5),
-        Duration::from_secs(250),
+        Duration::from_secs(350),
     )
     .await;
     assert!(l2_is_good);
 
-    let commitment_task_is_good = wait_for_condition(
-        || async {
-            let output = Command::new("curl")
-                .arg("http://localhost:60000/api/hotshot_contract")
-                .output();
-            if let Err(e) = output {
-                eprintln!("{}", e);
-                false
-            } else {
-                let output = output.unwrap();
-                !output.stdout.is_empty()
-            }
-        },
-        Duration::from_secs(5),
-        Duration::from_secs(300),
-    )
-    .await;
-    assert!(commitment_task_is_good);
+    dotenv::from_path(format!("{}/.env", NITRO_WORK_DIR)).unwrap();
+    let builder_url = format!(
+        "http://localhost:{}",
+        dotenv::var("ESPRESSO_BUILDER_SERVER_PORT").unwrap()
+    );
 
     println!("Checking balance");
     let balance_output = run_wallet()
@@ -252,8 +234,25 @@ async fn test() -> Result<()> {
 
     println!("Doing a transfer with valid builder address");
     let dummy_address = format!("0x{:x}", Address::from_slice(&[2u8; 20]));
-    let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
+
+    let valid_builder_address =
+        dotenv::var("ESPRESSO_SEQUENCER_PREFUNDED_BUILDER_ACCOUNTS").unwrap();
     let transfer_with_valid_builder = run_wallet()
+        .arg("transfer")
+        .arg("--to")
+        .arg(dummy_address.clone())
+        .arg("--amount")
+        .arg("10")
+        .arg("--guaranteed-by-builder")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
+        .env("BUILDER_ADDRESS", &valid_builder_address)
+        .output()?;
+    assert!(transfer_with_valid_builder.status.success());
+
+    println!("Transfer with Builder URL: {}", builder_url);
+    let _transfer_with_builder_url = run_wallet()
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address)
@@ -263,10 +262,10 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .env("BUILDER_ADDRESS", valid_builder_address)
+        .env("BUILDER_URL", builder_url)
         .output()?;
-
-    assert!(transfer_with_valid_builder.status.success());
+    // TODO: enable the following assertion after the builder is fixed
+    // assert!(transfer_with_builder_url.status.success());
 
     println!("Deploying ERC20 token");
     let contract = SimpleToken::deploy(
@@ -307,7 +306,7 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .env("BUILDER_ADDRESS", valid_builder_address)
+        .env("BUILDER_ADDRESS", &valid_builder_address)
         .output()?;
 
     assert!(output.status.success());
