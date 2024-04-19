@@ -19,7 +19,7 @@ use wallet::EspressoWallet;
 #[command(author, version, about)]
 struct Args {
     /// Config file
-    #[arg(short, long = "config", default_value = "../config.toml")]
+    #[arg(short, long = "config", default_value = "config.toml")]
     config_path: std::path::PathBuf,
 
     /// Rest of arguments
