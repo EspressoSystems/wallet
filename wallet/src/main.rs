@@ -66,6 +66,7 @@ enum Commands {
         #[clap(long, default_value_t = false)]
         guaranteed_by_builder: bool,
     },
+    #[serde(alias = "transfer_erc20")]
     TransferErc20 {
         #[clap(long)]
         contract_address: Address,
@@ -83,10 +84,12 @@ enum Commands {
     #[default]
     #[serde(alias = "balance")]
     Balance,
+    #[serde(alias = "balance_erc20")]
     BalanceErc20 {
         #[clap(long)]
         contract_address: Address,
     },
+    #[serde(alias = "mint_erc20")]
     MintErc20 {
         #[clap(long)]
         contract_address: Address,
