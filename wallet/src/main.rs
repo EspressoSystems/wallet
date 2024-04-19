@@ -7,6 +7,7 @@ use ethers::{
     providers::{Http, Middleware, Provider},
     types::{Address, U256},
 };
+use url::Url;
 use wallet::EspressoWallet;
 
 #[derive(Parser, Debug)]
@@ -18,12 +19,12 @@ pub struct Cli {
     rollup_rpc_url: String,
 
     /// The url for fetching the builder address.
-    #[clap(long, env = "BUILDER_URL", default_value = "")]
-    builder_url: String,
+    #[clap(long, env = "BUILDER_URL")]
+    builder_url: Option<Url>,
 
     /// The builder address. Lower priority than `builder_url`.
-    #[clap(long, env = "BUILDER_ADDRESS", default_value = "")]
-    builder_addr: String,
+    #[clap(long, env = "BUILDER_ADDRESS")]
+    builder_addr: Option<Address>,
 
     #[clap(long, env = "ACCOUNT_INDEX", default_value = "0")]
     account_index: u32,
@@ -37,7 +38,7 @@ enum Commands {
     Transfer {
         /// hex string of the target address
         #[clap(long)]
-        to: String,
+        to: Address,
 
         #[clap(long)]
         amount: u64,
@@ -47,14 +48,14 @@ enum Commands {
     },
     TransferErc20 {
         #[clap(long)]
-        contract_address: String,
+        contract_address: Address,
 
         #[clap(long)]
         amount: u64,
 
         /// hex string of the target address
         #[clap(long)]
-        to: String,
+        to: Address,
 
         #[clap(long, default_value_t = false)]
         guaranteed_by_builder: bool,
@@ -62,18 +63,18 @@ enum Commands {
     Balance,
     BalanceErc20 {
         #[clap(long)]
-        contract_address: String,
+        contract_address: Address,
     },
     MintErc20 {
         #[clap(long)]
-        contract_address: String,
+        contract_address: Address,
 
         #[clap(long)]
         amount: u64,
 
         /// hex string of the target address
         #[clap(long)]
-        to: String,
+        to: Address,
 
         #[clap(long, default_value_t = false)]
         guaranteed_by_builder: bool,
@@ -102,25 +103,11 @@ async fn main() {
             amount,
             guaranteed_by_builder,
         } => {
-            let builder_addr = if *guaranteed_by_builder {
-                if !cli.builder_url.is_empty() {
-                    Some(get_builder_address(cli.builder_url).await)
-                } else if !cli.builder_addr.is_empty() {
-                    Some(
-                        cli.builder_addr
-                            .parse::<Address>()
-                            .expect("Invalid builder address."),
-                    )
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            let to_addr = to.parse::<Address>().expect("Invalid to address.");
+            let builder_addr =
+                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
+                    .await;
             let receipt = wallet
-                .transfer(to_addr, U256::from(*amount), builder_addr)
+                .transfer(*to, U256::from(*amount), builder_addr)
                 .await
                 .unwrap();
             println!("{:?}", receipt);
@@ -135,32 +122,17 @@ async fn main() {
             to,
             guaranteed_by_builder,
         } => {
-            let builder_addr = if *guaranteed_by_builder {
-                if !cli.builder_url.is_empty() {
-                    Some(get_builder_address(cli.builder_url).await)
-                } else if !cli.builder_addr.is_empty() {
-                    Some(
-                        cli.builder_addr
-                            .parse::<Address>()
-                            .expect("Invalid builder address."),
-                    )
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-            let to_addr = to.parse::<Address>().unwrap();
-            let contract_addr = contract_address.parse::<Address>().unwrap();
+            let builder_addr =
+                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
+                    .await;
             let receipt = wallet
-                .transfer_erc20(contract_addr, to_addr, U256::from(*amount), builder_addr)
+                .transfer_erc20(*contract_address, *to, U256::from(*amount), builder_addr)
                 .await
                 .unwrap();
             println!("{:?}", receipt);
         }
         Commands::BalanceErc20 { contract_address } => {
-            let contract_addr = contract_address.parse::<Address>().unwrap();
-            let balance = wallet.balance_erc20(contract_addr).await.unwrap();
+            let balance = wallet.balance_erc20(*contract_address).await.unwrap();
             println!("{:?}", balance.to_string());
         }
         Commands::MintErc20 {
@@ -169,31 +141,32 @@ async fn main() {
             to,
             guaranteed_by_builder,
         } => {
-            let builder_addr = if *guaranteed_by_builder {
-                if !cli.builder_url.is_empty() {
-                    Some(get_builder_address(cli.builder_url).await)
-                } else if !cli.builder_addr.is_empty() {
-                    Some(
-                        cli.builder_addr
-                            .parse::<Address>()
-                            .expect("Invalid builder address."),
-                    )
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-            let to_addr = to.parse::<Address>().unwrap();
-            let contract_addr = contract_address.parse::<Address>().unwrap();
+            let builder_addr =
+                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
+                    .await;
             let receipt = wallet
-                .mint_erc20(contract_addr, to_addr, U256::from(*amount), builder_addr)
+                .mint_erc20(*contract_address, *to, U256::from(*amount), builder_addr)
                 .await;
             match receipt {
                 Ok(r) => println!("{:?}", r),
                 Err(e) => panic!("got error: {:?}", e),
             }
         }
+    }
+}
+
+async fn maybe_get_builder_addr(
+    guaranteed_by_builder: &bool,
+    builder_url: Option<Url>,
+    builder_addr: Option<Address>,
+) -> Option<Address> {
+    if *guaranteed_by_builder {
+        if let Some(url) = builder_url {
+            return Some(get_builder_address(url).await);
+        };
+        builder_addr
+    } else {
+        None
     }
 }
 
