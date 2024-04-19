@@ -121,7 +121,6 @@ async fn main() {
         Config::from(&mut cli.config)
     };
 
-    dbg!(&config);
     let provider = Provider::<Http>::try_from(&config.rollup_rpc_url).unwrap();
     let id = provider.get_chainid().await.unwrap();
     let wallet = EspressoWallet::new(
