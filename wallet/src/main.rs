@@ -309,14 +309,9 @@ fn maybe_get_builder_addr(
     builder_url: Option<Url>,
     builder_addr: Option<Address>,
 ) -> Option<Address> {
-    if *guaranteed_by_builder {
-        if let Some(url) = builder_url {
-            return Some(get_builder_address(url));
-        };
-        builder_addr
-    } else {
-        None
-    }
+    guaranteed_by_builder
+        .then(|| builder_url.map(get_builder_address).or(builder_addr))
+        .flatten()
 }
 
 #[cfg(test)]
