@@ -8,13 +8,11 @@ struct EthKey {
     address: String,
 }
 
-pub async fn get_builder_address(url: Url) -> Address {
+pub fn get_builder_address(url: Url) -> Address {
     let url = url.join("block_info/builderaddress").unwrap();
-    let body = reqwest::get(url)
-        .await
+    let body = reqwest::blocking::get(url)
         .unwrap()
         .json::<EthKey>()
-        .await
         .unwrap();
 
     body.address.parse::<Address>().unwrap()

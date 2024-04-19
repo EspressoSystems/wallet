@@ -243,8 +243,7 @@ async fn main() -> anyhow::Result<()> {
                 guaranteed_by_builder,
                 config.builder_url,
                 config.builder_addr,
-            )
-            .await;
+            );
             let receipt = wallet
                 .transfer(*to, U256::from(*amount), builder_addr)
                 .await?;
@@ -271,8 +270,7 @@ async fn main() -> anyhow::Result<()> {
                 guaranteed_by_builder,
                 config.builder_url,
                 config.builder_addr,
-            )
-            .await;
+            );
             let receipt = wallet
                 .transfer_erc20(*contract_address, *to, U256::from(*amount), builder_addr)
                 .await?;
@@ -292,8 +290,7 @@ async fn main() -> anyhow::Result<()> {
                 guaranteed_by_builder,
                 config.builder_url,
                 config.builder_addr,
-            )
-            .await;
+            );
             let receipt = wallet
                 .mint_erc20(*contract_address, *to, amount.map(U256::from), builder_addr)
                 .await;
@@ -307,14 +304,14 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn maybe_get_builder_addr(
+fn maybe_get_builder_addr(
     guaranteed_by_builder: &bool,
     builder_url: Option<Url>,
     builder_addr: Option<Address>,
 ) -> Option<Address> {
     if *guaranteed_by_builder {
         if let Some(url) = builder_url {
-            return Some(get_builder_address(url).await);
+            return Some(get_builder_address(url));
         };
         builder_addr
     } else {
