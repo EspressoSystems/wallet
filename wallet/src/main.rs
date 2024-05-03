@@ -35,7 +35,8 @@ struct Args {
 
 #[derive(ClapSerde, Debug, Deserialize, Serialize)]
 pub struct Config {
-    #[clap(long, env = "MNEMONIC", default_value = DEV_MNEMONIC)]
+    #[default(DEV_MNEMONIC.to_string())]
+    #[clap(long, env = "MNEMONIC")]
     #[serde(alias = "mnemonic", alias = "MNEMONIC")]
     pub mnemonic: String,
 
