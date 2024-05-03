@@ -26,3 +26,5 @@ node_modules/
 contracts/cache
 contracts/out
 contracts/broadcast/*/31337
+
+config.toml

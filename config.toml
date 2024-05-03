@@ -1,7 +1,0 @@
-MNEMONIC="test test test test test test test test test test test junk"
-rollup_rpc_url="http://127.0.0.1:8547"
-account_index=0
-[command.transfer]
-to="0x9e0869fecdd81281a77e84c931456bbc39fe2144"
-amount=10
-guaranteed_by_builder=false
