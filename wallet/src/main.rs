@@ -1,18 +1,36 @@
 mod builder;
 mod wallet;
-
 use builder::get_builder_address;
-use clap::{Parser, Subcommand};
+use clap::Subcommand;
+use clap_serde_derive::{
+    clap::{self, Parser},
+    ClapSerde,
+};
 use ethers::{
     providers::{Http, Middleware, Provider},
     types::{Address, U256},
 };
+use serde::{Deserialize, Serialize};
+use std::fs;
 use url::Url;
 use wallet::EspressoWallet;
 
-#[derive(Parser, Debug)]
-pub struct Cli {
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Args {
+    /// Config file
+    #[arg(short, long = "config", default_value = "config.toml")]
+    config_path: std::path::PathBuf,
+
+    /// Rest of arguments
+    #[command(flatten)]
+    pub config: <Config as ClapSerde>::Opt,
+}
+
+#[derive(ClapSerde, Debug, Deserialize, Serialize)]
+pub struct Config {
     #[clap(long, env = "MNEMONIC")]
+    #[serde(alias = "mnemonic", alias = "MNEMONIC")]
     mnemonic: String,
 
     #[clap(long, env = "ROLLUP_RPC_URL")]
@@ -29,12 +47,14 @@ pub struct Cli {
     #[clap(long, env = "ACCOUNT_INDEX", default_value = "0")]
     account_index: u32,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
+    #[serde(alias = "command")]
     commands: Commands,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Default, Subcommand, Debug, Deserialize, Serialize)]
 enum Commands {
+    #[serde(alias = "transfer")]
     Transfer {
         /// hex string of the target address
         #[clap(long)]
@@ -46,6 +66,7 @@ enum Commands {
         #[clap(long, default_value_t = false)]
         guaranteed_by_builder: bool,
     },
+    #[serde(alias = "transfer_erc20")]
     TransferErc20 {
         #[clap(long)]
         contract_address: Address,
@@ -60,11 +81,15 @@ enum Commands {
         #[clap(long, default_value_t = false)]
         guaranteed_by_builder: bool,
     },
+    #[default]
+    #[serde(alias = "balance")]
     Balance,
+    #[serde(alias = "balance_erc20")]
     BalanceErc20 {
         #[clap(long)]
         contract_address: Address,
     },
+    #[serde(alias = "mint_erc20")]
     MintErc20 {
         #[clap(long)]
         contract_address: Address,
@@ -83,13 +108,25 @@ enum Commands {
 
 #[async_std::main]
 async fn main() {
-    let cli = Cli::parse();
-    let provider = Provider::<Http>::try_from(&cli.rollup_rpc_url).unwrap();
+    let mut cli = Args::parse();
+    // Get config file
+    let config = if let Ok(f) = fs::read_to_string(&cli.config_path) {
+        // parse toml
+        match toml::from_str::<Config>(&f) {
+            Ok(config) => config.merge(&mut cli.config),
+            Err(err) => panic!("Error in configuration file:\n{}", err),
+        }
+    } else {
+        // If there is no config file return only config parsed from clap
+        Config::from(&mut cli.config)
+    };
+
+    let provider = Provider::<Http>::try_from(&config.rollup_rpc_url).unwrap();
     let id = provider.get_chainid().await.unwrap();
     let wallet = EspressoWallet::new(
-        cli.mnemonic,
-        cli.account_index,
-        cli.rollup_rpc_url,
+        config.mnemonic,
+        config.account_index,
+        config.rollup_rpc_url,
         id.as_u64(),
     );
     if let Err(e) = wallet {
@@ -97,15 +134,18 @@ async fn main() {
     }
     let wallet = wallet.unwrap();
 
-    match &cli.commands {
+    match &config.commands {
         Commands::Transfer {
             to,
             amount,
             guaranteed_by_builder,
         } => {
-            let builder_addr =
-                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
-                    .await;
+            let builder_addr = maybe_get_builder_addr(
+                guaranteed_by_builder,
+                config.builder_url,
+                config.builder_addr,
+            )
+            .await;
             let receipt = wallet
                 .transfer(*to, U256::from(*amount), builder_addr)
                 .await
@@ -122,9 +162,12 @@ async fn main() {
             to,
             guaranteed_by_builder,
         } => {
-            let builder_addr =
-                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
-                    .await;
+            let builder_addr = maybe_get_builder_addr(
+                guaranteed_by_builder,
+                config.builder_url,
+                config.builder_addr,
+            )
+            .await;
             let receipt = wallet
                 .transfer_erc20(*contract_address, *to, U256::from(*amount), builder_addr)
                 .await
@@ -141,9 +184,12 @@ async fn main() {
             to,
             guaranteed_by_builder,
         } => {
-            let builder_addr =
-                maybe_get_builder_addr(guaranteed_by_builder, cli.builder_url, cli.builder_addr)
-                    .await;
+            let builder_addr = maybe_get_builder_addr(
+                guaranteed_by_builder,
+                config.builder_url,
+                config.builder_addr,
+            )
+            .await;
             let receipt = wallet
                 .mint_erc20(*contract_address, *to, U256::from(*amount), builder_addr)
                 .await;
@@ -176,6 +222,7 @@ mod test {
     use ethers::{types::Address, utils::Anvil};
 
     static MNEMONIC: &str = "test test test test test test test test test test test junk";
+
     #[test]
     fn test_bin_balance() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
