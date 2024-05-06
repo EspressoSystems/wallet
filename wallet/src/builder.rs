@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -8,14 +10,19 @@ struct EthKey {
     address: String,
 }
 
-pub async fn get_builder_address(url: Url) -> Address {
+pub fn get_builder_address(url: Url) -> Address {
     let url = url.join("block_info/builderaddress").unwrap();
-    let body = reqwest::get(url)
-        .await
-        .unwrap()
-        .json::<EthKey>()
-        .await
-        .unwrap();
-
-    body.address.parse::<Address>().unwrap()
+    for _ in 0..5 {
+        if let Ok(body) = reqwest::blocking::get(url.clone()) {
+            return body
+                .json::<EthKey>()
+                .unwrap()
+                .address
+                .parse::<Address>()
+                .unwrap();
+        } else {
+            sleep(Duration::from_millis(400))
+        }
+    }
+    panic!("Error: Failed to retrieve address from builder!");
 }
