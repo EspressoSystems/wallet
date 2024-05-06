@@ -1,5 +1,15 @@
 # Espresso Wallet
 
+A command line interface wallet to interact with Espresso’s Cappuccino Testnet
+deployment. The wallet can be use to send send transactions and queries to the
+rollups running on the Cappuccino deployment. It also showcases a new feature
+where a user can build a transaction that can only be included in blocks by a
+builder of their choice, so-called "builder-guaranteed transactions".
+
+The wallet currently supports sending the rollups native currencies and
+creating, minting and transferring ERC20 tokens as well as checking the
+corresponding balances.
+
 To fetch the source code
 
     git clone --recursive https://github.com/EspressoSystems/wallet
