@@ -1,5 +1,4 @@
 use std::process::Output;
-use std::sync::Arc;
 use std::{
     process::{Command, Stdio},
     time::Duration,
@@ -10,7 +9,6 @@ use escargot::CargoBuild;
 use ethers::{prelude::*, signers::coins_bip39::English};
 
 use crate::{assert_output_is_receipt, wait_for_condition};
-use contract_bindings::simple_token::SimpleToken;
 
 const NITRO_WORK_DIR: &str = "../tests/nitro/nitro-testnode";
 
@@ -207,7 +205,7 @@ async fn test() -> Result<()> {
     let transfer_output = run_wallet()
         .arg("transfer")
         .arg("--to")
-        .arg(format!("0x{:x}", Address::random()))
+        .arg(format!("{:#x}", Address::random()))
         .arg("--amount")
         .arg("10")
         .env("MNEMONIC", mnemonic)
@@ -217,7 +215,7 @@ async fn test() -> Result<()> {
     assert_output_is_receipt(transfer_output);
 
     println!("Doing a transfer with invalid builder address");
-    let dummy_address = format!("0x{:x}", Address::from_slice(&[1u8; 20]));
+    let dummy_address = format!("{:#x}", Address::from_slice(&[1u8; 20]));
     let transfer_with_invalid_builder = run_wallet()
         .arg("transfer")
         .arg("--to")
@@ -228,12 +226,12 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .env("BUILDER_ADDRESS", format!("0x{:x}", Address::zero()))
+        .env("BUILDER_ADDRESS", format!("{:#x}", Address::zero()))
         .output()?;
     assert!(!transfer_with_invalid_builder.status.success());
 
     println!("Doing a transfer with valid builder address");
-    let dummy_address = format!("0x{:x}", Address::from_slice(&[2u8; 20]));
+    let dummy_address = format!("{:#x}", Address::from_slice(&[2u8; 20]));
 
     let valid_builder_address =
         dotenv::var("ESPRESSO_SEQUENCER_PREFUNDED_BUILDER_ACCOUNTS").unwrap();
@@ -268,14 +266,19 @@ async fn test() -> Result<()> {
     // assert!(transfer_with_builder_url.status.success());
 
     println!("Deploying ERC20 token");
-    let contract = SimpleToken::deploy(
-        Arc::new(client),
-        ("name".to_string(), "symbol".to_string(), U256::from(18)),
-    )?
-    .send()
-    .await?;
-
-    let erc20_addr = &format!("{:x}", contract.address());
+    let output = run_wallet()
+        .arg("deploy-erc20")
+        .arg("--name")
+        .arg("name")
+        .arg("--symbol")
+        .arg("symbol")
+        .output()?;
+    assert!(output.status.success());
+    let erc20_addr = std::str::from_utf8(&output.stdout)?
+        .split_whitespace()
+        .last()
+        .unwrap();
+    assert!(erc20_addr.parse::<Address>().is_ok());
 
     println!("Minting ERC20 tokens");
     let output = run_wallet()
@@ -283,7 +286,7 @@ async fn test() -> Result<()> {
         .arg("--contract-address")
         .arg(erc20_addr)
         .arg("--to")
-        .arg(format!("{:x}", addr))
+        .arg(format!("{:#x}", addr))
         .arg("--amount")
         .arg("1")
         .env("MNEMONIC", mnemonic)
@@ -299,7 +302,7 @@ async fn test() -> Result<()> {
         .arg("--contract-address")
         .arg(erc20_addr)
         .arg("--to")
-        .arg(format!("{:x}", addr))
+        .arg(format!("{:#x}", addr))
         .arg("--amount")
         .arg("1")
         .arg("--guaranteed-by-builder")
@@ -329,7 +332,7 @@ async fn test() -> Result<()> {
         .arg("--contract-address")
         .arg(erc20_addr)
         .arg("--to")
-        .arg(format!("{:x}", addr))
+        .arg(format!("{:#x}", addr))
         .arg("--amount")
         .arg("1")
         .env("MNEMONIC", mnemonic)
@@ -345,7 +348,7 @@ async fn test() -> Result<()> {
         .arg("--contract-address")
         .arg(erc20_addr)
         .arg("--to")
-        .arg(format!("{:x}", addr))
+        .arg(format!("{:#x}", addr))
         .arg("--amount")
         .arg("1")
         .arg("--guaranteed-by-builder")

@@ -11,6 +11,7 @@ clap = { version = "4.4", features = ["derive", "env"] }
 clap-serde-derive = "0.2.1"
 commit = { git = "https://github.com/EspressoSystems/commit" }
 contract-bindings = { path = "../contract-bindings" }
+directories = "5.0.1"
 ethers = "2.0"
 lazy_static = "1.4"
 reqwest = { version = "0.11.26", features = ["json"] }
@@ -22,3 +23,4 @@ url = { version = "2.5.0", features = ["serde"] }
 assert_cmd = "2.0.14"
 dotenv = "0.15.0"
 escargot = "0.5.10"
+tempfile = "3.10.1"

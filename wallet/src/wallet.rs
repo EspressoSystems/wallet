@@ -9,6 +9,8 @@ use lazy_static::lazy_static;
 use std::sync::Arc;
 use std::time::Duration;
 
+pub const DEV_MNEMONIC: &str = "test test test test test test test test test test test junk";
+
 lazy_static! {
     static ref MAGIC_BYTES: [u8; 32] =
         RawCommitmentBuilder::<DummyCommittable>::new("espresso-builder-zNC8sXSk5Yl6Uiu")
@@ -22,22 +24,23 @@ pub struct EspressoWallet {
 
 impl EspressoWallet {
     pub fn new(
-        mnemonic: String,
+        mnemonic: impl AsRef<str>,
         account_index: u32,
         rollup_url: String,
         chain_id: u64,
     ) -> Result<Self> {
         let wallet = MnemonicBuilder::<English>::default()
-            .phrase(mnemonic.as_str())
+            .phrase(mnemonic.as_ref())
             .index(account_index)?
             .build()?
             .with_chain_id(chain_id);
 
         let interval = if cfg!(test) {
+            // Poll every 10ms in tests to make tests complete faster.
             Duration::from_millis(10)
         } else {
-            // Default value
-            Duration::from_secs(7)
+            // Currently the sequencer has about a 1 - 2 sec block time.
+            Duration::from_secs(2)
         };
         let provider = Provider::<Http>::try_from(rollup_url)?.interval(interval);
         let client = Arc::new(SignerMiddleware::new(provider, wallet));
@@ -76,6 +79,24 @@ impl EspressoWallet {
         let tx_request = tx_request.data(calldata);
         let receipt = self.send_transaction(tx_request).await?;
         Ok(receipt)
+    }
+
+    pub async fn deploy_erc20(
+        &self,
+        name: impl AsRef<str>,
+        symbol: impl AsRef<str>,
+    ) -> Result<Erc20Contract<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>> {
+        let contract = Erc20Contract::deploy(
+            self.client.clone(),
+            (
+                name.as_ref().to_string(),
+                symbol.as_ref().to_string(),
+                18u8, /*decimals*/
+            ),
+        )?
+        .send()
+        .await?;
+        Ok(contract)
     }
 
     pub async fn transfer_erc20(
@@ -120,12 +141,14 @@ impl EspressoWallet {
     pub async fn mint_erc20(
         &self,
         contract_addr: Address,
-        to: Address,
-        amount: U256,
+        to: Option<Address>,
+        amount: Option<U256>,
         builder: Option<Address>,
     ) -> Result<TransactionReceipt> {
+        let to = to.unwrap_or(self.client.address());
         let contract = Erc20Contract::new(contract_addr, self.client.clone());
         let decimals = contract.decimals().call().await?;
+        let amount = amount.unwrap_or(U256::from(1000));
         let decimal_amount = amount * U256::exp10(decimals as usize);
         let mut calldata = contract
             .mint(to, decimal_amount)
@@ -208,8 +231,7 @@ mod test {
 
     impl EspressoWallet {
         fn for_test(rollup_url: String) -> Self {
-            let mnemonic = "test test test test test test test test test test test junk";
-            Self::new(mnemonic.into(), 1, rollup_url, 1).unwrap()
+            Self::new(DEV_MNEMONIC, 1, rollup_url, 1).unwrap()
         }
     }
 
@@ -290,7 +312,12 @@ mod test {
         let amount = U256::from(u128::MAX);
 
         wallet
-            .mint_erc20(contract_addr, wallet.client.address(), amount, None)
+            .mint_erc20(
+                contract_addr,
+                Some(wallet.client.address()),
+                Some(amount),
+                None,
+            )
             .await
             .unwrap_err();
 
@@ -319,15 +346,10 @@ mod test {
         let initial_balance = wallet.balance_erc20(contract_addr).await?;
 
         wallet
-            .mint_erc20(contract_addr, wallet.client.address(), amount, None)
+            .mint_erc20(contract_addr, None, Some(amount), None)
             .await?;
         wallet
-            .mint_erc20(
-                contract_addr,
-                wallet.client.address(),
-                amount,
-                Some(builder_addr),
-            )
+            .mint_erc20(contract_addr, None, Some(amount), Some(builder_addr))
             .await?;
 
         let decimals = erc20_contract.decimals().call().await?;
@@ -376,15 +398,10 @@ mod test {
         let initial_balance = wallet.balance_erc20(contract_addr).await?;
 
         wallet
-            .mint_erc20(contract_addr, wallet.client.address(), amount, None)
+            .mint_erc20(contract_addr, None, Some(amount), None)
             .await?;
         wallet
-            .mint_erc20(
-                contract_addr,
-                wallet.client.address(),
-                amount,
-                Some(Address::random()),
-            )
+            .mint_erc20(contract_addr, None, Some(amount), Some(Address::random()))
             .await?;
 
         let decimals = contract.decimals().call().await?;
