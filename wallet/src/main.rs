@@ -17,6 +17,7 @@ use ethers::{
 };
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
+use sysinfo::System;
 use url::Url;
 use wallet::EspressoWallet;
 use wallet::DEV_MNEMONIC;
@@ -156,6 +157,7 @@ enum Commands {
         #[clap(long, default_value_t = false)]
         guaranteed_by_builder: bool,
     },
+    Version,
 }
 
 fn exit_err(msg: impl AsRef<str>, err: impl core::fmt::Display) -> ! {
@@ -185,27 +187,37 @@ async fn main() -> anyhow::Result<()> {
 
     // Run the init command first because config values required by other
     // commands are not present.
-    if let Commands::Init = config.commands {
-        let mut config = toml::from_str::<Config>(include_str!("../../config.toml.default"))?;
-        // Generate a new mnemonic for the user.
-        let mnemonic = Mnemonic::<English>::new(&mut thread_rng());
-        config.mnemonic = mnemonic.to_phrase();
-        let wallet = MnemonicBuilder::<English>::default()
-            .phrase(config.mnemonic.as_ref())
-            .build()?;
-        println!("Address of new wallet: {:#x}", wallet.address());
+    match config.commands {
+        Commands::Init => {
+            let mut config = toml::from_str::<Config>(include_str!("../../config.toml.default"))?;
+            // Generate a new mnemonic for the user.
+            let mnemonic = Mnemonic::<English>::new(&mut thread_rng());
+            config.mnemonic = mnemonic.to_phrase();
+            let wallet = MnemonicBuilder::<English>::default()
+                .phrase(config.mnemonic.as_ref())
+                .build()?;
+            println!("Address of new wallet: {:#x}", wallet.address());
 
-        // Create directory where config file will be saved
-        fs::create_dir_all(cli.config_dir()).unwrap_or_else(|err| {
-            exit_err("failed to create config directory", err);
-        });
+            // Create directory where config file will be saved
+            fs::create_dir_all(cli.config_dir()).unwrap_or_else(|err| {
+                exit_err("failed to create config directory", err);
+            });
 
-        // Save the config file
-        fs::write(&config_path, toml::to_string(&config)?)
-            .unwrap_or_else(|err| exit_err("failed to write config file", err));
+            // Save the config file
+            fs::write(&config_path, toml::to_string(&config)?)
+                .unwrap_or_else(|err| exit_err("failed to write config file", err));
 
-        println!("Config file saved to {}", config_path.display());
-        return Ok(());
+            println!("Config file saved to {}", config_path.display());
+            return Ok(());
+        }
+        Commands::Version => {
+            println!("wallet version: {}", env!("CARGO_PKG_VERSION"));
+            println!("{}", git_version::git_version!(prefix = "git rev: "));
+            println!("OS: {}", System::long_os_version().unwrap_or_default());
+            println!("Arch: {}", System::cpu_arch().unwrap_or_default());
+            return Ok(());
+        }
+        _ => {} // Other commands handled after shared setup.
     }
 
     let provider = Provider::<Http>::try_from(&config.rollup_rpc_url.to_string())?;
@@ -416,6 +428,13 @@ mod test {
             .assert()
             .success();
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_version() -> anyhow::Result<()> {
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
+        cmd.arg("version").assert().success();
         Ok(())
     }
 }
