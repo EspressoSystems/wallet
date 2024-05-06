@@ -16,7 +16,7 @@ use ethers::{
     types::{Address, U256},
 };
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::{fs, path::PathBuf};
 use url::Url;
 use wallet::EspressoWallet;
 use wallet::DEV_MNEMONIC;
@@ -25,12 +25,45 @@ use wallet::DEV_MNEMONIC;
 #[command(author, version, about)]
 struct Args {
     /// Config file
-    #[arg(short, long = "config", default_value = "config.toml")]
-    config_path: std::path::PathBuf,
+    #[arg(short, long = "config")]
+    config_path: Option<PathBuf>,
 
     /// Rest of arguments
     #[command(flatten)]
     pub config: <Config as ClapSerde>::Opt,
+}
+
+impl Args {
+    fn config_path(&self) -> PathBuf {
+        // If the user provided a config path, use it.
+        self.config_path.clone().unwrap_or_else(|| {
+            // Otherwise create a config.toml in a platform specific config directory.
+            //
+            // (empty) qualifier, espresso organization, and application name
+            // see more <https://docs.rs/directories/5.0.1/directories/struct.ProjectDirs.html#method.from>
+            let project_dir =
+                directories::ProjectDirs::from("", "espresso", "espresso-cappuccino-wallet");
+            let basename = "config.toml";
+            if let Some(project_dir) = project_dir {
+                project_dir.config_dir().to_path_buf().join(basename)
+            } else {
+                // In the unlikely case that we can't find the config directory,
+                // create the config file in the current directory and issue a
+                // warning.
+                eprintln!("WARN: Unable to find config directory, using current directory");
+                basename.into()
+            }
+        })
+    }
+
+    fn config_dir(&self) -> PathBuf {
+        if let Some(path) = self.config_path().parent() {
+            path.to_path_buf()
+        } else {
+            // Try to use the current directory
+            PathBuf::from(".")
+        }
+    }
 }
 
 #[derive(ClapSerde, Debug, Deserialize, Serialize)]
@@ -133,8 +166,9 @@ fn exit_err(msg: impl AsRef<str>, err: impl core::fmt::Display) -> ! {
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
     let mut cli = Args::parse();
+    let config_path = cli.config_path();
     // Get config file
-    let config = if let Ok(f) = fs::read_to_string(&cli.config_path) {
+    let config = if let Ok(f) = fs::read_to_string(&config_path) {
         // parse toml
         match toml::from_str::<Config>(&f) {
             Ok(config) => config.merge(&mut cli.config),
@@ -161,9 +195,16 @@ async fn main() -> anyhow::Result<()> {
             .build()?;
         println!("Address of new wallet: {:#x}", wallet.address());
 
-        // Save config file to cli.config_path
-        fs::write(&cli.config_path, toml::to_string(&config)?)?;
-        println!("Config file saved to {}", cli.config_path.display());
+        // Create directory where config file will be saved
+        fs::create_dir_all(cli.config_dir()).unwrap_or_else(|err| {
+            exit_err("failed to create config directory", err);
+        });
+
+        // Save the config file
+        fs::write(&config_path, toml::to_string(&config)?)
+            .unwrap_or_else(|err| exit_err("failed to write config file", err));
+
+        println!("Config file saved to {}", config_path.display());
         return Ok(());
     }
 
@@ -202,7 +243,10 @@ async fn main() -> anyhow::Result<()> {
             println!("{}", result);
         }
         Commands::DeployErc20 { name, symbol } => {
-            let contract = wallet.deploy_erc20(name, symbol).await?;
+            let contract = wallet
+                .deploy_erc20(name, symbol)
+                .await
+                .unwrap_or_else(|err| exit_err("Failed to deploy ERC20 contract", err));
             println!("ERC20 token deployed at {:#x}", contract.address());
         }
         Commands::TransferErc20 {
@@ -268,6 +312,8 @@ async fn maybe_get_builder_addr(
 
 #[cfg(test)]
 mod test {
+    use std::path::PathBuf;
+
     use crate::wallet::DEV_MNEMONIC;
     use assert_cmd::Command;
     use ethers::{types::Address, utils::Anvil};
@@ -328,6 +374,41 @@ mod test {
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
         cmd.arg("-c")
             .arg(&config_path)
+            // Overwrite the rpc value in the config file so that we can get a response.
+            .arg("--rollup-rpc-url")
+            .arg(anvil.endpoint())
+            .arg("balance")
+            .assert()
+            .success();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_config_file_relative_config_path() -> anyhow::Result<()> {
+        let tmpdir = tempfile::tempdir()?;
+        let relative_config_path = PathBuf::from("config.toml");
+        let absolute_config_path = tmpdir.path().join(&relative_config_path);
+
+        assert!(!absolute_config_path.exists());
+
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
+        cmd.current_dir(&tmpdir)
+            .arg("-c")
+            .arg(&relative_config_path)
+            .arg("init")
+            .assert()
+            .success();
+
+        assert!(absolute_config_path.exists());
+
+        let anvil = Anvil::new().chain_id(1u64).spawn();
+
+        // Check that we can query the balance with the config file.
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
+        cmd.current_dir(&tmpdir)
+            .arg("-c")
+            .arg(&relative_config_path)
             // Overwrite the rpc value in the config file so that we can get a response.
             .arg("--rollup-rpc-url")
             .arg(anvil.endpoint())
