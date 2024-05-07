@@ -39,8 +39,8 @@ impl EspressoWallet {
             // Poll every 10ms in tests to make tests complete faster.
             Duration::from_millis(10)
         } else {
-            // Currently the sequencer has about a 1 - 2 sec block time.
-            Duration::from_secs(2)
+            // Currently the sequencer has about a 1 - 3 sec block time.
+            Duration::from_secs(3)
         };
         let provider = Provider::<Http>::try_from(rollup_url)?.interval(interval);
         let client = Arc::new(SignerMiddleware::new(provider, wallet));
