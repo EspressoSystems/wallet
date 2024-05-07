@@ -272,6 +272,9 @@ async fn test() -> Result<()> {
         .arg("name")
         .arg("--symbol")
         .arg("symbol")
+        .env("MNEMONIC", mnemonic)
+        .env("ROLLUP_RPC_URL", nitro_rpc)
+        .env("ACCOUNT_INDEX", index.to_string())
         .output()?;
     assert!(output.status.success());
     let erc20_addr = std::str::from_utf8(&output.stdout)?
