@@ -16,20 +16,20 @@ To fetch the source code
 
 ## Local testing
 
-### Download the wallet binary
+Download the wallet binary:
 
-Linux
+### Linux
 
     curl -Lo wallet https://github.com/EspressoSystems/wallet/releases/latest/download/wallet-x86-linux
     chmod +x wallet
 
-macOS
+### macOS
 
     arch=$(uname -m | sed 's/x86_64/x86/;s/arm64/aarch64/')
     curl -Lo wallet https://github.com/EspressoSystems/wallet/releases/latest/download/wallet-$arch-darwin
     chmod +x wallet
 
-Windows
+### Windows
 
     curl -Lo wallet.exe https://github.com/EspressoSystems/wallet/releases/latest/download/wallet-x86-win.exe
 
