@@ -326,7 +326,10 @@ mod test {
     fn test_bin_balance() -> anyhow::Result<()> {
         let anvil = Anvil::new().chain_id(1u64).spawn();
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
-        cmd.env("MNEMONIC", DEV_MNEMONIC)
+        let home = tempfile::tempdir()?;
+        cmd.current_dir(home.path())
+            .env("HOME", home.path())
+            .env("MNEMONIC", DEV_MNEMONIC)
             .env("ROLLUP_RPC_URL", anvil.endpoint())
             .arg("balance")
             .assert()
@@ -341,7 +344,10 @@ mod test {
         // Include builder address to catch parsing errors.
         let valid_builder_address = "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f";
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
-        cmd.env("MNEMONIC", DEV_MNEMONIC)
+        let home = tempfile::tempdir()?;
+        cmd.current_dir(home.path())
+            .env("HOME", home.path())
+            .env("MNEMONIC", DEV_MNEMONIC)
             .env("ROLLUP_RPC_URL", anvil.endpoint())
             .env("BUILDER_ADDRESS", valid_builder_address)
             .arg("transfer")

@@ -7,6 +7,7 @@ use std::{
 use anyhow::Result;
 use escargot::CargoBuild;
 use ethers::{prelude::*, signers::coins_bip39::English};
+use tempfile::TempDir;
 
 use crate::{assert_output_is_receipt, wait_for_condition};
 
@@ -101,14 +102,36 @@ impl Drop for Cleanup {
     }
 }
 
-fn run_wallet() -> Command {
-    CargoBuild::new()
-        .bin("wallet")
-        .current_release()
-        .current_target()
-        .run()
-        .unwrap()
-        .command()
+// Helper struct to run the wallet binary in a temporary directory.
+//
+// This allows for a clean state for each test without having to worry about a
+// config file being loaded.
+#[derive(Debug)]
+struct WalletCmd {
+    cmd: Command,
+    dir: TempDir,
+}
+
+impl WalletCmd {
+    fn new() -> Self {
+        let dir = tempfile::tempdir().unwrap();
+        let cmd = CargoBuild::new()
+            .bin("wallet")
+            .current_release()
+            .current_target()
+            .run()
+            .unwrap()
+            .command();
+        Self { cmd, dir }
+    }
+
+    fn cmd(&mut self) -> &mut Command {
+        // Set HOME to avoid accidentally loading the user's wallet
+        // configuration file at the default location.
+        self.cmd
+            .env("HOME", self.dir.path())
+            .current_dir(self.dir.path())
+    }
 }
 
 #[async_std::test]
@@ -118,7 +141,7 @@ async fn test() -> Result<()> {
     let _teardown = Cleanup;
 
     // Sanity test to assert that we can locate the binary.
-    let output = run_wallet().arg("--help").output()?;
+    let output = WalletCmd::new().cmd().arg("--help").output()?;
     dbg!(&output);
     assert!(output.status.success());
 
@@ -193,7 +216,8 @@ async fn test() -> Result<()> {
     );
 
     println!("Checking balance");
-    let balance_output = run_wallet()
+    let balance_output = WalletCmd::new()
+        .cmd()
         .arg("balance")
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
@@ -202,7 +226,8 @@ async fn test() -> Result<()> {
     assert!(balance_output.status.success());
 
     println!("Doing a transfer");
-    let transfer_output = run_wallet()
+    let transfer_output = WalletCmd::new()
+        .cmd()
         .arg("transfer")
         .arg("--to")
         .arg(format!("{:#x}", Address::random()))
@@ -216,7 +241,8 @@ async fn test() -> Result<()> {
 
     println!("Doing a transfer with invalid builder address");
     let dummy_address = format!("{:#x}", Address::from_slice(&[1u8; 20]));
-    let transfer_with_invalid_builder = run_wallet()
+    let transfer_with_invalid_builder = WalletCmd::new()
+        .cmd()
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address)
@@ -235,7 +261,8 @@ async fn test() -> Result<()> {
 
     let valid_builder_address =
         dotenv::var("ESPRESSO_SEQUENCER_PREFUNDED_BUILDER_ACCOUNTS").unwrap();
-    let transfer_with_valid_builder = run_wallet()
+    let transfer_with_valid_builder = WalletCmd::new()
+        .cmd()
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address.clone())
@@ -250,7 +277,8 @@ async fn test() -> Result<()> {
     assert!(transfer_with_valid_builder.status.success());
 
     println!("Transfer with Builder URL: {}", builder_url);
-    let _transfer_with_builder_url = run_wallet()
+    let _transfer_with_builder_url = WalletCmd::new()
+        .cmd()
         .arg("transfer")
         .arg("--to")
         .arg(dummy_address)
@@ -266,7 +294,8 @@ async fn test() -> Result<()> {
     // assert!(transfer_with_builder_url.status.success());
 
     println!("Deploying ERC20 token");
-    let output = run_wallet()
+    let output = WalletCmd::new()
+        .cmd()
         .arg("deploy-erc20")
         .arg("--name")
         .arg("name")
@@ -284,7 +313,8 @@ async fn test() -> Result<()> {
     assert!(erc20_addr.parse::<Address>().is_ok());
 
     println!("Minting ERC20 tokens");
-    let output = run_wallet()
+    let output = WalletCmd::new()
+        .cmd()
         .arg("mint-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -300,7 +330,8 @@ async fn test() -> Result<()> {
     assert!(output.status.success());
 
     println!("Minting ERC20 tokens with selected builder");
-    let output = run_wallet()
+    let output = WalletCmd::new()
+        .cmd()
         .arg("mint-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -318,7 +349,8 @@ async fn test() -> Result<()> {
     assert!(output.status.success());
 
     println!("Checking ERC20 balance");
-    let output = run_wallet()
+    let output = WalletCmd::new()
+        .cmd()
         .arg("balance-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -330,7 +362,8 @@ async fn test() -> Result<()> {
     assert!(output.status.success());
 
     println!("Transferring ERC20 tokens");
-    let output = run_wallet()
+    let output = WalletCmd::new()
+        .cmd()
         .arg("transfer-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
@@ -346,7 +379,8 @@ async fn test() -> Result<()> {
     assert!(output.status.success());
 
     println!("Transferring ERC20 tokens with selected builder");
-    let output = run_wallet()
+    let output = WalletCmd::new()
+        .cmd()
         .arg("transfer-erc20")
         .arg("--contract-address")
         .arg(erc20_addr)
