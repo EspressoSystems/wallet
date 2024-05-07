@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd tests/nitro/nitro-testnode
+docker compose pull --ignore-pull-failures
+
+./test-node.bash --init --espresso --latest-espresso-image

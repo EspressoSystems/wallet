@@ -1,0 +1,5 @@
+# Config file for running the wallet against the local nitro deployment
+mnemonic = "indoor dish desk flag debris potato excuse depart ticket judge file exit"
+account_index = 6
+rollup_rpc_url = "http://localhost:8547"
+builder_url = "http://localhost:41003"
