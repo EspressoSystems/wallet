@@ -87,7 +87,9 @@ pub struct Config {
     #[clap(long, env = "BUILDER_ADDRESS")]
     builder_addr: Option<Address>,
 
-    #[clap(long, env = "ACCOUNT_INDEX", default_value = "0")]
+    /// The account index to use.
+    #[default(0)]
+    #[clap(long, env = "ACCOUNT_INDEX")]
     account_index: u32,
 
     #[command(subcommand)]
