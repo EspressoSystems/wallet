@@ -256,11 +256,10 @@ async fn test() -> Result<()> {
         .output()?;
     assert!(!transfer_with_invalid_builder.status.success());
 
-    println!("Doing a transfer with valid builder address");
-    let dummy_address = format!("{:#x}", Address::from_slice(&[2u8; 20]));
+    let valid_builder_address = "0x976ea74026e726554db657fa54763abd0c3a0aa9";
+    println!("Doing a transfer with valid builder address {valid_builder_address}");
 
-    let valid_builder_address =
-        dotenv::var("ESPRESSO_SEQUENCER_PREFUNDED_BUILDER_ACCOUNTS").unwrap();
+    let dummy_address = format!("{:#x}", Address::from_slice(&[2u8; 20]));
     let transfer_with_valid_builder = WalletCmd::new()
         .cmd()
         .arg("transfer")
@@ -272,12 +271,12 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .env("BUILDER_ADDRESS", &valid_builder_address)
+        .env("BUILDER_ADDRESS", valid_builder_address)
         .output()?;
     assert!(transfer_with_valid_builder.status.success());
 
     println!("Transfer with Builder URL: {}", builder_url);
-    let _transfer_with_builder_url = WalletCmd::new()
+    let transfer_with_builder_url = WalletCmd::new()
         .cmd()
         .arg("transfer")
         .arg("--to")
@@ -290,8 +289,7 @@ async fn test() -> Result<()> {
         .env("ACCOUNT_INDEX", index.to_string())
         .env("BUILDER_URL", builder_url)
         .output()?;
-    // TODO: enable the following assertion after the builder is fixed
-    // assert!(transfer_with_builder_url.status.success());
+    assert!(transfer_with_builder_url.status.success());
 
     println!("Deploying ERC20 token");
     let output = WalletCmd::new()
