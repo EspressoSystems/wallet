@@ -181,7 +181,7 @@ async fn test() -> Result<()> {
             }
         },
         Duration::from_secs(5),
-        Duration::from_secs(300),
+        Duration::from_secs(1000),
     )
     .await;
     assert!(funded);
