@@ -341,7 +341,7 @@ async fn test() -> Result<()> {
         .env("MNEMONIC", mnemonic)
         .env("ROLLUP_RPC_URL", nitro_rpc)
         .env("ACCOUNT_INDEX", index.to_string())
-        .env("BUILDER_ADDRESS", &valid_builder_address)
+        .env("BUILDER_ADDRESS", valid_builder_address)
         .output()?;
 
     assert!(output.status.success());
